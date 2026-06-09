@@ -1,0 +1,19 @@
+# Project-local Codex profile for gh-security-audit work.
+# Codex loads project config only when the project is trusted.
+
+default_permissions = "workspace-gh-api"
+
+[permissions.workspace-gh-api.filesystem]
+":minimal" = "read"
+":tmpdir" = "write"
+":slash_tmp" = "write"
+
+[permissions.workspace-gh-api.filesystem.":workspace_roots"]
+"." = "write"
+"**/*.env" = "deny"
+
+[permissions.workspace-gh-api.network]
+enabled = true
+
+[permissions.workspace-gh-api.network.domains]
+"api.github.com" = "allow"
