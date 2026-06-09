@@ -5,7 +5,7 @@
 This sample shows the v0.1 remote-api output format for
 `K-Oxon/gh-security-audit-skill`. It is an example, not a current audit result.
 
-Overall status: `WARN`
+Collection status: complete with limitations
 
 Key points:
 
@@ -26,27 +26,25 @@ Key points:
 - Out of scope for v0.1: workflow file diagnostics, zizmor, Scorecard, local
   clone inspection, and automatic remediation
 
-## Overall Status
+## Collection Status
 
-`WARN`
+Complete with limitations.
 
-The sample finding set contains no `FAIL` findings. Several recommended
-repository security settings were either not configured or could not be
-verified through the available API responses.
+The sample finding set uses deterministic review labels. It is an inventory of
+observed repository state, not a compliance verdict.
 
-## High-Priority Findings
+## Observed Security Settings
 
-No high-priority `FAIL` findings are present in this sample. Secret scanning
-alert details are intentionally omitted.
+Secret scanning alert details are intentionally omitted.
 
-## All Findings
+## Findings Inventory
 
-| ID | Status | Severity | Summary |
+| ID | Status | Severity | Observed state |
 | --- | --- | --- | --- |
 | `repo_metadata` | `PASS` | `info` | Repository metadata was retrieved and the repository was not archived. |
 | `actions_repository_permissions` | `WARN` | `medium` | Actions were enabled, but repository-level restrictions should be reviewed. |
 | `actions_workflow_token_permissions` | `PASS` | `medium` | Default workflow token permission was `read`. |
-| `repository_rulesets` | `WARN` | `medium` | No repository rulesets were returned. Legacy branch protection was not checked in v0.1. |
+| `repository_rulesets` | `WARN` | `medium` | No repository rulesets were returned. This does not prove legacy branch protection is absent. |
 | `codeql_default_setup` | `WARN` | `medium` | CodeQL default setup state was `not-configured`. |
 | `dependabot_security_updates` | `WARN` | `medium` | Dependabot security updates were disabled in the sample observation. |
 | `vulnerability_alerts` | `WARN` | `medium` | Vulnerability alerts were disabled or unavailable in the sample observation. |
@@ -56,7 +54,7 @@ alert details are intentionally omitted.
 | `secret_scanning_open_alerts` | `PASS` | `high` | Open secret scanning alert count was zero in the sample observation. |
 | `code_scanning_open_alerts` | `SKIP` | `medium` | Code scanning alerts were unavailable because no analysis was found. |
 
-## Manual Checks
+## Manual or Unavailable Checks
 
 - Confirm whether legacy branch protection is used instead of repository
   rulesets.
@@ -74,9 +72,9 @@ alert details are intentionally omitted.
   evidence; a `404` response must be interpreted with endpoint context.
 - v0.1 does not inspect workflow files or local repository contents.
 
-## Recommended Next Actions
+## Optional Review Notes
 
-1. Add or review rulesets for the default branch.
-2. Decide whether CodeQL default setup should be enabled.
-3. Enable or verify Dependabot vulnerability alerts and security updates.
+1. Review whether the default branch is protected by legacy branch protection or rulesets.
+2. Review whether CodeQL default setup should be enabled.
+3. Review whether Dependabot vulnerability alerts and security updates are intentionally disabled.
 4. Re-run the remote-api recipe after settings change.

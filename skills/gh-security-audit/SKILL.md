@@ -34,15 +34,20 @@ Markdown must contain:
 
 1. Summary
 2. Scope and assumptions
-3. Overall status
-4. High-priority findings
-5. All findings
-6. Manual checks
+3. Collection status
+4. Observed security settings
+5. Alert availability and counts
+6. Manual or unavailable checks
 7. Data access and limitations
-8. Recommended next actions
+8. Optional review notes
 
 JSON must include `schema_version`, `subject`, `policy_context`, `findings`,
 and `limitations`. Use `schema_version: "0.1"`.
+
+Default v0.1 output is inventory-first. Report observed values and API
+limitations before making any recommendation. If a status is included, assign it
+only from the deterministic rules in `references/finding_model.md`; do not infer
+severity from general security intuition.
 
 ## v0.1 Boundaries
 
@@ -52,5 +57,8 @@ inspection, or automatic fixes in v0.1 results. Mark those as `SKIP`,
 
 Never turn API access failures, permission gaps, feature-disabled responses, or
 plan differences into `FAIL`. Record them as limitations.
+
+Do not use `FAIL` unless the user explicitly asks to apply a policy profile that
+defines failure conditions.
 
 Never output secret scanning secret values or location details.

@@ -5,8 +5,8 @@ security settings with `gh api`.
 
 v0.1 is intentionally small: it gives Codex, Claude Code, and other
 Agent-Skills-compatible tools a reproducible remote API recipe for one
-`OWNER/REPO`, plus a finding model and output contract. It does not modify
-repository settings.
+`OWNER/REPO`, plus an inventory-first finding model and output contract. It does
+not modify repository settings.
 
 ## What It Checks
 
@@ -77,6 +77,8 @@ repository.
 - Alert findings and settings findings are separate.
 - Secret scanning output must not include secret values or location details.
 - Markdown and JSON should be generated from the same finding set.
+- Default v0.1 output reports observed state first. Review flags are assigned
+  only from the deterministic table in `finding_model.md`.
 
 ## Repository Layout
 

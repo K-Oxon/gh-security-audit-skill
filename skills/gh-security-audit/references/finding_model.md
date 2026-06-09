@@ -1,17 +1,23 @@
 # Finding Model
 
-v0.1 reports what could be verified from GitHub APIs and what could not be
-verified. A missing or inaccessible API response is not a security failure by
-itself.
+v0.1 is inventory-first. It reports what GitHub APIs returned, what could not be
+verified, and which observed states should be reviewed. It is not a compliance
+verdict or an automated risk rating.
+
+Do not let the model freely decide whether a setting is "good" or "bad".
+Statuses in default v0.1 output are deterministic review labels from this file.
+Put the actual repository state in `observed`.
 
 ## Status Values
 
-- `PASS`: Retrieved evidence satisfies the expected state in the policy context.
-- `WARN`: Retrieved evidence is outside the recommended state or leaves
-  material risk, but is not classified as a clear failure.
-- `FAIL`: Retrieved evidence does not satisfy the expected state in the policy
-  context. Permission gaps and collection failures are not `FAIL`.
-- `MANUAL`: Human judgment or non-API evidence is required.
+- `PASS`: The endpoint returned usable evidence and the deterministic table does
+  not mark the observed state for review. `PASS` does not mean safe.
+- `WARN`: The endpoint returned usable evidence and the deterministic table marks
+  the observed state for human review. `WARN` is not a severity judgment.
+- `FAIL`: Reserved for an explicit user-provided policy profile. Do not use
+  `FAIL` in default inventory mode.
+- `MANUAL`: Human judgment or non-API evidence is required, such as legacy branch
+  protection when v0.1 only checked rulesets.
 - `SKIP`: The check is out of scope, unsupported, or a prerequisite is missing.
   `SKIP` does not mean safe.
 
@@ -23,8 +29,8 @@ itself.
 - `low`: Improvement or limited impact.
 - `info`: Contextual audit fact.
 
-Keep severity separate from status. A `WARN` can still deserve prompt action,
-and a `FAIL` can be low severity depending on the repository.
+Severity is optional in default inventory mode. If included, keep it separate
+from status and treat it as a coarse review aid, not as a policy decision.
 
 ## Finding Shape
 
@@ -38,9 +44,9 @@ Each finding should include:
 - `source.type`
 - `source.name`
 - `observed`
-- `expected`
+- `policy_expected` only when the user supplied or selected a policy profile
 - `evidence`
-- `recommendation`
+- `review_note`
 - `limitations`
 
 Use these source types in v0.1:
@@ -64,9 +70,10 @@ Use these source types in v0.1:
     "archived": false
   },
   "policy_context": {
-    "id": "v0.1-runtime-default",
+    "id": "v0.1-inventory-default",
     "api_version": "2022-11-28",
     "generated_at": "YYYY-MM-DDTHH:MM:SSZ",
+    "mode": "remote-api-inventory",
     "sources": []
   },
   "findings": [],
@@ -75,24 +82,42 @@ Use these source types in v0.1:
 ```
 
 Markdown and JSON outputs must be generated from the same finding set. Do not
-change statuses, counts, or recommendations between the two formats.
+change statuses, counts, observed values, or limitations between the two
+formats.
 
-## Minimal Finding Set
+## Deterministic v0.1 Review Labels
 
-| ID | Source | Expected direction |
-| --- | --- | --- |
-| `repo_metadata` | `GET /repos/{owner}/{repo}` | Repository is not archived and default branch is known. |
-| `actions_repository_permissions` | `GET /actions/permissions` | Actions are enabled. Unrestricted allowed actions or disabled SHA pinning are usually `WARN`. |
-| `actions_workflow_token_permissions` | `GET /actions/permissions/workflow` | `default_workflow_permissions=read` is `PASS`; `write` is `WARN` or `FAIL` depending on policy context. |
-| `repository_rulesets` | `GET /rulesets` | A ruleset protects the default branch. Empty rulesets are `WARN`. Legacy branch protection is `MANUAL` in v0.1. |
-| `codeql_default_setup` | `GET /code-scanning/default-setup` | `state=configured` is `PASS`; `not-configured` is `WARN`. |
-| `dependabot_security_updates` | `GET /automated-security-fixes` and `GET /repos` | Enabled is `PASS`; disabled is `WARN`. |
-| `vulnerability_alerts` | `GET /vulnerability-alerts` and `GET /repos` | `204` or enabled status is `PASS`; disabled is `WARN`; inaccessible is a limitation. |
-| `secret_scanning` | `GET /repos` `security_and_analysis` | Enabled is `PASS`; disabled is `WARN`; absent data is a limitation. |
-| `secret_scanning_push_protection` | `GET /repos` `security_and_analysis` | Enabled is `PASS`; disabled is `WARN`; absent data is a limitation. |
-| `dependabot_open_alerts` | `GET /dependabot/alerts?state=open` | Open count `0` is `PASS`; `1+` is `WARN`; unavailable is a limitation. |
-| `secret_scanning_open_alerts` | `GET /secret-scanning/alerts?state=open` | Open count `0` is `PASS`; `1+` is `FAIL`; unavailable is a limitation. |
-| `code_scanning_open_alerts` | `GET /code-scanning/alerts?state=open` | Open count `0` is `PASS`; `1+` is `WARN`; no analysis or unavailable is a limitation or `SKIP`. |
+Use this table for default v0.1 status assignment. Do not invent stronger
+judgments from general security intuition.
+
+| ID | Source | Observed state | Default status |
+| --- | --- | --- | --- |
+| `repo_metadata` | `GET /repos/{owner}/{repo}` | `archived=false` and `default_branch` present | `PASS` |
+| `repo_metadata` | `GET /repos/{owner}/{repo}` | `archived=true` or missing `default_branch` | `WARN` |
+| `actions_repository_permissions` | `GET /actions/permissions` | Actions enabled with restricted/selected actions and SHA pinning required | `PASS` |
+| `actions_repository_permissions` | `GET /actions/permissions` | `allowed_actions=all` or `sha_pinning_required=false` | `WARN` |
+| `actions_workflow_token_permissions` | `GET /actions/permissions/workflow` | `default_workflow_permissions=read` | `PASS` |
+| `actions_workflow_token_permissions` | `GET /actions/permissions/workflow` | `default_workflow_permissions=write` | `WARN` |
+| `repository_rulesets` | `GET /rulesets` | one or more rulesets returned | `PASS`, plus describe targets if available |
+| `repository_rulesets` | `GET /rulesets` | empty array | `WARN`, meaning review branch protection separately |
+| `repository_rulesets` | v0.1 remote API scope | legacy branch protection not checked | `MANUAL` if the user needs a protection verdict |
+| `codeql_default_setup` | `GET /code-scanning/default-setup` | `state=configured` | `PASS` |
+| `codeql_default_setup` | `GET /code-scanning/default-setup` | `state` other than `configured` | `WARN` |
+| `dependabot_security_updates` | `GET /automated-security-fixes` and `GET /repos` | enabled | `PASS` |
+| `dependabot_security_updates` | `GET /automated-security-fixes` and `GET /repos` | disabled | `WARN` |
+| `vulnerability_alerts` | `GET /vulnerability-alerts` and `GET /repos` | `204` or enabled status | `PASS` |
+| `vulnerability_alerts` | `GET /vulnerability-alerts` and `GET /repos` | disabled response | `WARN` |
+| `secret_scanning` | `GET /repos` `security_and_analysis` | enabled | `PASS` |
+| `secret_scanning` | `GET /repos` `security_and_analysis` | disabled | `WARN` |
+| `secret_scanning_push_protection` | `GET /repos` `security_and_analysis` | enabled | `PASS` |
+| `secret_scanning_push_protection` | `GET /repos` `security_and_analysis` | disabled | `WARN` |
+| `dependabot_open_alerts` | `GET /dependabot/alerts?state=open` | open count `0` | `PASS` |
+| `dependabot_open_alerts` | `GET /dependabot/alerts?state=open` | open count `1+` | `WARN` |
+| `secret_scanning_open_alerts` | `GET /secret-scanning/alerts?state=open` | open count `0` | `PASS` |
+| `secret_scanning_open_alerts` | `GET /secret-scanning/alerts?state=open` | open count `1+` | `WARN`; do not expose secret values or locations |
+| `code_scanning_open_alerts` | `GET /code-scanning/alerts?state=open` | open count `0` | `PASS` |
+| `code_scanning_open_alerts` | `GET /code-scanning/alerts?state=open` | open count `1+` | `WARN` |
+| any endpoint | any source | unavailable due to permissions, disabled feature, plan, unsupported repo, or no analysis | top-level or finding-level limitation; not `FAIL` |
 
 ## Endpoint Limitations
 
@@ -115,7 +140,10 @@ change statuses, counts, or recommendations between the two formats.
 - Alert findings describe detected open alerts.
 - Do not use an alert endpoint failure as proof that the corresponding setting
   is disabled.
+- Do not infer "default branch is unprotected" from an empty rulesets response;
+  report "no rulesets returned" and add `MANUAL` for legacy branch protection if
+  the user needs a protection verdict.
 - Do not include secret scanning secret values, raw secret fragments, file paths,
   line numbers, or location details in v0.1 output.
-- Do not describe `PASS` as "safe" or "secure"; it only means the expected
-  evidence was observed.
+- Do not describe `PASS` as "safe" or "secure"; it only means the observed state
+  did not match a deterministic review flag in this inventory model.

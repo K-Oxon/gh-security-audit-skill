@@ -10,10 +10,10 @@
     "archived": false
   },
   "policy_context": {
-    "id": "v0.1-runtime-default",
+    "id": "v0.1-inventory-default",
     "api_version": "2022-11-28",
     "generated_at": "2026-06-09T00:00:00Z",
-    "mode": "remote-api",
+    "mode": "remote-api-inventory",
     "sources": [
       "https://docs.github.com/en/rest/actions/permissions?apiVersion=2022-11-28",
       "https://docs.github.com/en/rest/repos/rules?apiVersion=2022-11-28",
@@ -47,14 +47,10 @@
         "archived": false,
         "default_branch": "main"
       },
-      "expected": {
-        "archived": false,
-        "default_branch": "present"
-      },
       "evidence": [
         "Repository metadata was retrieved."
       ],
-      "recommendation": "Use this metadata as context for other findings.",
+      "review_note": "Use this metadata as context for other findings.",
       "limitations": []
     },
     {
@@ -72,16 +68,11 @@
         "allowed_actions": "all",
         "sha_pinning_required": false
       },
-      "expected": {
-        "enabled": true,
-        "allowed_actions": "restricted or explicitly reviewed",
-        "sha_pinning_required": true
-      },
       "evidence": [
         "Actions permissions were retrievable.",
         "The sample observation allowed all actions and did not require SHA pinning."
       ],
-      "recommendation": "Review allowed actions and SHA pinning requirements against repository policy.",
+      "review_note": "Review allowed actions and SHA pinning requirements against repository policy.",
       "limitations": [
         "This sample does not assert the current allowed_actions value."
       ]
@@ -100,14 +91,10 @@
         "default_workflow_permissions": "read",
         "can_approve_pull_request_reviews": false
       },
-      "expected": {
-        "default_workflow_permissions": "read",
-        "can_approve_pull_request_reviews": false
-      },
       "evidence": [
         "Default workflow permission was read in the sample observation."
       ],
-      "recommendation": "Keep the default workflow token permission read-only unless a workflow needs write access explicitly.",
+      "review_note": "Keep the default workflow token permission read-only unless a workflow needs write access explicitly.",
       "limitations": []
     },
     {
@@ -123,13 +110,10 @@
       "observed": {
         "ruleset_count": 0
       },
-      "expected": {
-        "default_branch_protected_by_ruleset": true
-      },
       "evidence": [
         "The sample observation returned an empty rulesets array."
       ],
-      "recommendation": "Add a default-branch ruleset or manually confirm equivalent legacy branch protection.",
+      "review_note": "Add a default-branch ruleset or manually confirm equivalent legacy branch protection.",
       "limitations": [
         "Legacy branch protection is not checked by v0.1."
       ]
@@ -147,13 +131,10 @@
       "observed": {
         "state": "not-configured"
       },
-      "expected": {
-        "state": "configured"
-      },
       "evidence": [
         "CodeQL default setup was not configured in the sample observation."
       ],
-      "recommendation": "Enable CodeQL default setup if this repository contains supported code that should be scanned.",
+      "review_note": "Enable CodeQL default setup if this repository contains supported code that should be scanned.",
       "limitations": []
     },
     {
@@ -169,13 +150,10 @@
       "observed": {
         "enabled": false
       },
-      "expected": {
-        "enabled": true
-      },
       "evidence": [
         "Automated security fixes were disabled in the sample observation."
       ],
-      "recommendation": "Enable Dependabot security updates where compatible with the repository workflow.",
+      "review_note": "Enable Dependabot security updates where compatible with the repository workflow.",
       "limitations": []
     },
     {
@@ -191,13 +169,10 @@
       "observed": {
         "http_status": 404
       },
-      "expected": {
-        "http_status": 204
-      },
       "evidence": [
         "The sample observation did not receive the enabled 204 status."
       ],
-      "recommendation": "Confirm whether Dependabot vulnerability alerts should be enabled.",
+      "review_note": "Confirm whether Dependabot vulnerability alerts should be enabled.",
       "limitations": [
         "A 404 can also indicate unavailable feature or access constraints depending on context."
       ]
@@ -217,13 +192,10 @@
           "status": "enabled"
         }
       },
-      "expected": {
-        "secret_scanning": "enabled"
-      },
       "evidence": [
         "Repository metadata reported secret scanning enabled in the sample observation."
       ],
-      "recommendation": "Keep secret scanning enabled and avoid exposing secret values in audit output.",
+      "review_note": "Keep secret scanning enabled and avoid exposing secret values in audit output.",
       "limitations": []
     },
     {
@@ -241,13 +213,10 @@
           "status": "enabled"
         }
       },
-      "expected": {
-        "push_protection": "enabled"
-      },
       "evidence": [
         "Repository metadata reported secret scanning push protection enabled in the sample observation."
       ],
-      "recommendation": "Keep push protection enabled unless repository policy explicitly requires otherwise.",
+      "review_note": "Keep push protection enabled unless repository policy explicitly requires otherwise.",
       "limitations": []
     },
     {
@@ -261,11 +230,8 @@
         "name": "GET /repos/{owner}/{repo}/dependabot/alerts?state=open"
       },
       "observed": {},
-      "expected": {
-        "open_alert_count": 0
-      },
       "evidence": [],
-      "recommendation": "Enable or grant access to Dependabot alerts, then re-run the audit.",
+      "review_note": "Enable or grant access to Dependabot alerts, then re-run the audit.",
       "limitations": [
         "Dependabot alert listing was unavailable in the sample observation."
       ]
@@ -283,13 +249,10 @@
       "observed": {
         "open_alert_count": 0
       },
-      "expected": {
-        "open_alert_count": 0
-      },
       "evidence": [
         "The sample observation returned zero open secret scanning alerts."
       ],
-      "recommendation": "Continue monitoring secret scanning alerts. Do not include secret values in audit output.",
+      "review_note": "Continue monitoring secret scanning alerts. Do not include secret values in audit output.",
       "limitations": []
     },
     {
@@ -303,11 +266,8 @@
         "name": "GET /repos/{owner}/{repo}/code-scanning/alerts?state=open"
       },
       "observed": {},
-      "expected": {
-        "open_alert_count": 0
-      },
       "evidence": [],
-      "recommendation": "Configure code scanning before relying on code scanning alert counts.",
+      "review_note": "Configure code scanning before relying on code scanning alert counts.",
       "limitations": [
         "Code scanning alerts were unavailable because no analysis was found in the sample observation."
       ]

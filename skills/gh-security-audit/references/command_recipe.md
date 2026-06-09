@@ -109,8 +109,8 @@ the v0.1 plan was written, the sample repository allowed verification of:
 - repository metadata collection
 - Actions permission collection
 - workflow token permission collection
-- empty rulesets producing a `WARN`
-- CodeQL default setup `not-configured` producing a `WARN`
+- empty rulesets producing a deterministic review flag
+- CodeQL default setup `not-configured` producing a deterministic review flag
 - feature-disabled or unavailable alert endpoints producing limitations
 
 Re-run the recipe before using sample observations in a report.
