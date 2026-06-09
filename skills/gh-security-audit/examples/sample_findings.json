@@ -11,19 +11,28 @@
   },
   "policy_context": {
     "id": "v0.1-inventory-default",
-    "api_version": "2022-11-28",
+    "api_version": "2026-03-10",
     "generated_at": "2026-06-09T00:00:00Z",
     "mode": "remote-api-inventory",
     "sources": [
-      "https://docs.github.com/en/rest/actions/permissions?apiVersion=2022-11-28",
-      "https://docs.github.com/en/rest/repos/rules?apiVersion=2022-11-28",
-      "https://docs.github.com/en/rest/repos/repos?apiVersion=2022-11-28",
-      "https://docs.github.com/en/rest/dependabot/alerts?apiVersion=2022-11-28",
-      "https://docs.github.com/en/rest/secret-scanning/secret-scanning?apiVersion=2022-11-28",
-      "https://docs.github.com/en/rest/code-scanning/code-scanning?apiVersion=2022-11-28"
+      "https://docs.github.com/en/rest/repos/repos?apiVersion=2026-03-10",
+      "https://docs.github.com/en/rest/branches/branches?apiVersion=2026-03-10",
+      "https://docs.github.com/en/rest/branches/branch-protection?apiVersion=2026-03-10",
+      "https://docs.github.com/en/rest/actions/permissions?apiVersion=2026-03-10",
+      "https://docs.github.com/en/rest/actions/secrets?apiVersion=2026-03-10",
+      "https://docs.github.com/en/rest/actions/oidc?apiVersion=2026-03-10",
+      "https://docs.github.com/en/rest/actions/self-hosted-runners?apiVersion=2026-03-10",
+      "https://docs.github.com/en/rest/repos/rules?apiVersion=2026-03-10",
+      "https://docs.github.com/en/rest/code-security/configurations?apiVersion=2026-03-10",
+      "https://docs.github.com/en/rest/dependabot/alerts?apiVersion=2026-03-10",
+      "https://docs.github.com/en/rest/secret-scanning/secret-scanning?apiVersion=2026-03-10",
+      "https://docs.github.com/en/rest/code-scanning/code-scanning?apiVersion=2026-03-10",
+      "https://docs.github.com/en/rest/deployments/environments?apiVersion=2026-03-10",
+      "https://docs.github.com/en/rest/repos/attestations?apiVersion=2026-03-10"
     ],
     "out_of_scope": [
       "workflow file diagnostics",
+      "cloud provider trust-policy inspection",
       "zizmor",
       "Scorecard",
       "local clone inspection",
@@ -54,6 +63,109 @@
       "limitations": []
     },
     {
+      "id": "repository_security_and_analysis",
+      "title": "Repository security and analysis settings",
+      "status": "PASS",
+      "severity": "info",
+      "confidence": "medium",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}"
+      },
+      "observed": {
+        "advanced_security": null,
+        "secret_scanning": "enabled",
+        "secret_scanning_push_protection": "enabled",
+        "dependabot_security_updates": "enabled"
+      },
+      "evidence": [
+        "security_and_analysis fields were present in repository metadata."
+      ],
+      "review_note": "Omitted or null fields are recorded as unavailable, not failures.",
+      "limitations": [
+        "Field availability varies by repository visibility, plan, and token permissions."
+      ]
+    },
+    {
+      "id": "dependency_graph",
+      "title": "Dependency Graph",
+      "status": "PASS",
+      "severity": "medium",
+      "confidence": "medium",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}"
+      },
+      "observed": {
+        "dependency_graph": {
+          "status": "enabled"
+        }
+      },
+      "evidence": [
+        "Repository metadata or security configuration reported Dependency Graph enabled."
+      ],
+      "review_note": "Dependency Graph state is separate from Dependabot alert and update settings.",
+      "limitations": []
+    },
+    {
+      "id": "automatic_dependency_submission",
+      "title": "Automatic dependency submission",
+      "status": "MANUAL",
+      "severity": "medium",
+      "confidence": "medium",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/code-security-configuration"
+      },
+      "observed": {
+        "dependency_graph_autosubmit_action": "not_set"
+      },
+      "evidence": [
+        "Automatic dependency submission was not set in the sample observation."
+      ],
+      "review_note": "Review whether this repository uses ecosystems that need automatic dependency submission.",
+      "limitations": []
+    },
+    {
+      "id": "code_security_configuration",
+      "title": "Code security configuration attachment",
+      "status": "MANUAL",
+      "severity": "info",
+      "confidence": "medium",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/code-security-configuration"
+      },
+      "observed": {
+        "http_status": 204,
+        "attached": false
+      },
+      "evidence": [
+        "No code security configuration was attached in the sample observation."
+      ],
+      "review_note": "Review organization-level security configuration separately if the owner is an organization.",
+      "limitations": []
+    },
+    {
+      "id": "community_profile_security_policy",
+      "title": "Security policy presence",
+      "status": "WARN",
+      "severity": "low",
+      "confidence": "medium",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/community/profile"
+      },
+      "observed": {
+        "security_policy_present": false
+      },
+      "evidence": [
+        "The sample community profile did not include a security policy file."
+      ],
+      "review_note": "For public projects, consider documenting how to report vulnerabilities.",
+      "limitations": []
+    },
+    {
       "id": "actions_repository_permissions",
       "title": "GitHub Actions repository permissions",
       "status": "WARN",
@@ -73,9 +185,25 @@
         "The sample observation allowed all actions and did not require SHA pinning."
       ],
       "review_note": "Review allowed actions and SHA pinning requirements against repository policy.",
-      "limitations": [
-        "This sample does not assert the current allowed_actions value."
-      ]
+      "limitations": []
+    },
+    {
+      "id": "actions_selected_actions",
+      "title": "Selected Actions allowlist",
+      "status": "SKIP",
+      "severity": "info",
+      "confidence": "high",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/actions/permissions/selected-actions"
+      },
+      "observed": {
+        "applicable": false,
+        "reason": "allowed_actions was not selected"
+      },
+      "evidence": [],
+      "review_note": "Collect selected action details when repository Actions policy is selected.",
+      "limitations": []
     },
     {
       "id": "actions_workflow_token_permissions",
@@ -94,28 +222,108 @@
       "evidence": [
         "Default workflow permission was read in the sample observation."
       ],
-      "review_note": "Keep the default workflow token permission read-only unless a workflow needs write access explicitly.",
+      "review_note": "Workflow-level permissions blocks are not inspected by v0.1.",
       "limitations": []
     },
     {
-      "id": "repository_rulesets",
-      "title": "Repository rulesets",
-      "status": "WARN",
-      "severity": "medium",
+      "id": "actions_access_private_repository",
+      "title": "Private repository Actions component access",
+      "status": "SKIP",
+      "severity": "info",
       "confidence": "high",
       "source": {
         "type": "github_api",
-        "name": "GET /repos/{owner}/{repo}/rulesets"
+        "name": "GET /repos/{owner}/{repo}/actions/permissions/access"
+      },
+      "observed": {
+        "applicable": false,
+        "http_status": 422,
+        "reason": "endpoint applies only to internal and private repositories"
+      },
+      "evidence": [
+        "The sample repository was public, so private repository component access was not applicable."
+      ],
+      "review_note": "Run this check for private or internal repositories that share actions or reusable workflows.",
+      "limitations": []
+    },
+    {
+      "id": "branch_rulesets_inventory",
+      "title": "Branch rulesets inventory",
+      "status": "PASS",
+      "severity": "info",
+      "confidence": "high",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/rulesets?includes_parents=true&targets=branch"
       },
       "observed": {
         "ruleset_count": 0
       },
       "evidence": [
-        "The sample observation returned an empty rulesets array."
+        "The sample observation returned zero branch-targeting rulesets."
       ],
-      "review_note": "Add a default-branch ruleset or manually confirm equivalent legacy branch protection.",
+      "review_note": "Ruleset count alone is not a default-branch protection verdict.",
+      "limitations": []
+    },
+    {
+      "id": "default_branch_active_rules",
+      "title": "Active rules for default branch",
+      "status": "WARN",
+      "severity": "medium",
+      "confidence": "high",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/rules/branches/{branch}"
+      },
+      "observed": {
+        "branch": "main",
+        "active_rule_count": 0
+      },
+      "evidence": [
+        "No active rules were returned for the default branch in the sample observation."
+      ],
+      "review_note": "Review legacy branch protection and repository policy before making a protection verdict.",
+      "limitations": []
+    },
+    {
+      "id": "default_branch_summary",
+      "title": "Default branch summary",
+      "status": "PASS",
+      "severity": "info",
+      "confidence": "high",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/branches/{branch}"
+      },
+      "observed": {
+        "branch": "main",
+        "protected": false
+      },
+      "evidence": [
+        "Default branch summary was retrieved."
+      ],
+      "review_note": "The branch summary is not a detailed branch protection policy.",
+      "limitations": []
+    },
+    {
+      "id": "default_branch_legacy_protection",
+      "title": "Legacy branch protection for default branch",
+      "status": "MANUAL",
+      "severity": "medium",
+      "confidence": "medium",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/branches/{branch}/protection"
+      },
+      "observed": {
+        "http_status": 404
+      },
+      "evidence": [
+        "Detailed legacy branch protection was not returned in the sample observation."
+      ],
+      "review_note": "A 404 may mean absent protection or unavailable evidence; combine with active rules and branch summary.",
       "limitations": [
-        "Legacy branch protection is not checked by v0.1."
+        "No policy verdict is made from this response alone."
       ]
     },
     {
@@ -134,13 +342,32 @@
       "evidence": [
         "CodeQL default setup was not configured in the sample observation."
       ],
-      "review_note": "Enable CodeQL default setup if this repository contains supported code that should be scanned.",
+      "review_note": "This does not prove advanced setup or third-party SARIF is absent.",
+      "limitations": []
+    },
+    {
+      "id": "dependabot_version_updates_config",
+      "title": "Dependabot version updates configuration",
+      "status": "MANUAL",
+      "severity": "low",
+      "confidence": "medium",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/contents/.github/dependabot.yml?ref={branch}"
+      },
+      "observed": {
+        "present": false
+      },
+      "evidence": [
+        "No Dependabot version-update configuration file was found in the sample observation."
+      ],
+      "review_note": "Dependabot security updates can still work without version updates.",
       "limitations": []
     },
     {
       "id": "dependabot_security_updates",
       "title": "Dependabot security updates",
-      "status": "WARN",
+      "status": "PASS",
       "severity": "medium",
       "confidence": "high",
       "source": {
@@ -148,18 +375,19 @@
         "name": "GET /repos/{owner}/{repo}/automated-security-fixes"
       },
       "observed": {
-        "enabled": false
+        "enabled": true,
+        "paused": false
       },
       "evidence": [
-        "Automated security fixes were disabled in the sample observation."
+        "Automated security fixes were enabled in the sample observation."
       ],
-      "review_note": "Enable Dependabot security updates where compatible with the repository workflow.",
+      "review_note": "Review Dependabot workflow compatibility separately.",
       "limitations": []
     },
     {
       "id": "vulnerability_alerts",
       "title": "Dependabot vulnerability alerts",
-      "status": "WARN",
+      "status": "PASS",
       "severity": "medium",
       "confidence": "medium",
       "source": {
@@ -167,14 +395,52 @@
         "name": "GET /repos/{owner}/{repo}/vulnerability-alerts"
       },
       "observed": {
+        "http_status": 204
+      },
+      "evidence": [
+        "The sample observation received the enabled 204 status."
+      ],
+      "review_note": "Alert listing is reported separately from the setting.",
+      "limitations": []
+    },
+    {
+      "id": "private_vulnerability_reporting",
+      "title": "Private vulnerability reporting",
+      "status": "WARN",
+      "severity": "medium",
+      "confidence": "medium",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/private-vulnerability-reporting"
+      },
+      "observed": {
+        "enabled": false
+      },
+      "evidence": [
+        "Private vulnerability reporting was not enabled in the sample observation."
+      ],
+      "review_note": "Review whether public security reports should be accepted privately for this repository.",
+      "limitations": []
+    },
+    {
+      "id": "codeowners_errors",
+      "title": "CODEOWNERS syntax errors",
+      "status": "MANUAL",
+      "severity": "low",
+      "confidence": "medium",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/codeowners/errors?ref={branch}"
+      },
+      "observed": {
         "http_status": 404
       },
       "evidence": [
-        "The sample observation did not receive the enabled 204 status."
+        "CODEOWNERS syntax errors were not returned in the sample observation."
       ],
-      "review_note": "Confirm whether Dependabot vulnerability alerts should be enabled.",
+      "review_note": "A missing CODEOWNERS file is not the same as zero syntax errors.",
       "limitations": [
-        "A 404 can also indicate unavailable feature or access constraints depending on context."
+        "CODEOWNERS coverage was not assessed."
       ]
     },
     {
@@ -195,7 +461,7 @@
       "evidence": [
         "Repository metadata reported secret scanning enabled in the sample observation."
       ],
-      "review_note": "Keep secret scanning enabled and avoid exposing secret values in audit output.",
+      "review_note": "Do not expose secret values in audit output.",
       "limitations": []
     },
     {
@@ -216,25 +482,183 @@
       "evidence": [
         "Repository metadata reported secret scanning push protection enabled in the sample observation."
       ],
-      "review_note": "Keep push protection enabled unless repository policy explicitly requires otherwise.",
+      "review_note": "Keep push protection inventory separate from open alert counts.",
+      "limitations": []
+    },
+    {
+      "id": "deployment_environments",
+      "title": "Deployment environments",
+      "status": "MANUAL",
+      "severity": "info",
+      "confidence": "high",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/environments"
+      },
+      "observed": {
+        "environment_count": 0
+      },
+      "evidence": [
+        "No deployment environments were returned in the sample observation."
+      ],
+      "review_note": "Missing environments may be normal for repositories without deployments.",
+      "limitations": []
+    },
+    {
+      "id": "actions_secrets_inventory",
+      "title": "Repository Actions secrets metadata",
+      "status": "PASS",
+      "severity": "info",
+      "confidence": "medium",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/actions/secrets"
+      },
+      "observed": {
+        "secret_count": 0
+      },
+      "evidence": [
+        "Repository Actions secrets metadata was retrievable."
+      ],
+      "review_note": "Only names and metadata are inventory; values are never available or reported.",
+      "limitations": []
+    },
+    {
+      "id": "actions_organization_secrets_inventory",
+      "title": "Organization Actions secrets visible to repository",
+      "status": "SKIP",
+      "severity": "info",
+      "confidence": "medium",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/actions/organization-secrets"
+      },
+      "observed": {
+        "applicable": false
+      },
+      "evidence": [],
+      "review_note": "This endpoint applies when organization secrets are visible to the repository.",
+      "limitations": [
+        "The sample owner context did not provide organization secret inventory."
+      ]
+    },
+    {
+      "id": "environment_secrets_inventory",
+      "title": "Environment secrets metadata",
+      "status": "SKIP",
+      "severity": "info",
+      "confidence": "high",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/environments/{environment}/secrets"
+      },
+      "observed": {
+        "environment_count": 0
+      },
+      "evidence": [],
+      "review_note": "No environment secret inventory was collected because no environments were returned.",
+      "limitations": []
+    },
+    {
+      "id": "oidc_subject_claim",
+      "title": "OIDC subject claim customization",
+      "status": "MANUAL",
+      "severity": "medium",
+      "confidence": "medium",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/actions/oidc/customization/sub"
+      },
+      "observed": {
+        "use_default": true
+      },
+      "evidence": [
+        "GitHub-side OIDC subject customization was retrievable."
+      ],
+      "review_note": "Cloud provider trust policy is outside the GitHub API evidence collected by v0.1.",
+      "limitations": [
+        "No cloud IAM trust policy was inspected."
+      ]
+    },
+    {
+      "id": "self_hosted_runners",
+      "title": "Repository self-hosted runners",
+      "status": "PASS",
+      "severity": "medium",
+      "confidence": "high",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/actions/runners"
+      },
+      "observed": {
+        "runner_count": 0
+      },
+      "evidence": [
+        "No repository self-hosted runners were returned in the sample observation."
+      ],
+      "review_note": "Organization or enterprise runner exposure may require a separate owner-level audit.",
+      "limitations": []
+    },
+    {
+      "id": "immutable_releases",
+      "title": "Immutable releases",
+      "status": "MANUAL",
+      "severity": "medium",
+      "confidence": "medium",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/immutable-releases"
+      },
+      "observed": {
+        "enabled": false,
+        "enforced_by_owner": false
+      },
+      "evidence": [
+        "Immutable releases were reported as disabled in the sample observation."
+      ],
+      "review_note": "Review only if this repository publishes releases or release assets.",
+      "limitations": [
+        "A release process was not inspected."
+      ]
+    },
+    {
+      "id": "releases_inventory",
+      "title": "Releases inventory",
+      "status": "PASS",
+      "severity": "info",
+      "confidence": "high",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/releases"
+      },
+      "observed": {
+        "release_count": 0
+      },
+      "evidence": [
+        "No releases were returned in the sample observation."
+      ],
+      "review_note": "Release inventory is contextual for immutable releases and artifact attestations.",
       "limitations": []
     },
     {
       "id": "dependabot_open_alerts",
       "title": "Open Dependabot alerts",
-      "status": "SKIP",
+      "status": "PASS",
       "severity": "medium",
       "confidence": "medium",
       "source": {
         "type": "github_api",
         "name": "GET /repos/{owner}/{repo}/dependabot/alerts?state=open"
       },
-      "observed": {},
-      "evidence": [],
-      "review_note": "Enable or grant access to Dependabot alerts, then re-run the audit.",
-      "limitations": [
-        "Dependabot alert listing was unavailable in the sample observation."
-      ]
+      "observed": {
+        "open_alert_count": 0,
+        "paginated": true
+      },
+      "evidence": [
+        "The fully paginated sample observation returned zero open Dependabot alerts."
+      ],
+      "review_note": "Zero open alerts is endpoint evidence, not proof that no vulnerable dependency exists.",
+      "limitations": []
     },
     {
       "id": "secret_scanning_open_alerts",
@@ -247,12 +671,13 @@
         "name": "GET /repos/{owner}/{repo}/secret-scanning/alerts?state=open"
       },
       "observed": {
-        "open_alert_count": 0
+        "open_alert_count": 0,
+        "paginated": true
       },
       "evidence": [
-        "The sample observation returned zero open secret scanning alerts."
+        "The fully paginated sample observation returned zero open secret scanning alerts."
       ],
-      "review_note": "Continue monitoring secret scanning alerts. Do not include secret values in audit output.",
+      "review_note": "Do not include secret values, paths, or line numbers in v0.1 output.",
       "limitations": []
     },
     {
@@ -267,24 +692,106 @@
       },
       "observed": {},
       "evidence": [],
-      "review_note": "Configure code scanning before relying on code scanning alert counts.",
+      "review_note": "Enable or grant access to code scanning results, then re-run the audit.",
       "limitations": [
-        "Code scanning alerts were unavailable because no analysis was found in the sample observation."
+        "Code scanning alerts were unavailable in the sample observation."
       ]
+    },
+    {
+      "id": "artifact_attestations",
+      "title": "Artifact attestations",
+      "status": "MANUAL",
+      "severity": "medium",
+      "confidence": "high",
+      "source": {
+        "type": "manual",
+        "name": "GET /repos/{owner}/{repo}/attestations/{subject_digest}"
+      },
+      "observed": {
+        "subject_digest_supplied": false
+      },
+      "evidence": [],
+      "review_note": "Provide release artifact digests to query attestations; cryptographic verification remains separate.",
+      "limitations": [
+        "The repository API does not provide a repo-wide attestation coverage verdict."
+      ]
+    },
+    {
+      "id": "sbom_inventory",
+      "title": "SBOM inventory",
+      "status": "MANUAL",
+      "severity": "medium",
+      "confidence": "high",
+      "source": {
+        "type": "manual",
+        "name": "GitHub Dependency Graph SBOM APIs"
+      },
+      "observed": {
+        "checked_by_default": false
+      },
+      "evidence": [],
+      "review_note": "SBOM generation/fetch is not part of the default read-only v0.1 recipe.",
+      "limitations": [
+        "GitHub provides Dependency Graph SBOM APIs, but v0.1 does not collect or interpret SBOM content by default."
+      ]
+    },
+    {
+      "id": "dependency_review",
+      "title": "Dependency review",
+      "status": "MANUAL",
+      "severity": "medium",
+      "confidence": "high",
+      "source": {
+        "type": "manual",
+        "name": "dependency review API or workflow inspection"
+      },
+      "observed": {
+        "base_head_comparison_supplied": false,
+        "workflow_inspected": false
+      },
+      "evidence": [],
+      "review_note": "Dependency review requires a comparison or workflow/action inspection, which v0.1 does not run by default.",
+      "limitations": []
+    },
+    {
+      "id": "workflow_file_security",
+      "title": "Workflow file security diagnostics",
+      "status": "SKIP",
+      "severity": "medium",
+      "confidence": "high",
+      "source": {
+        "type": "out_of_scope",
+        "name": "local workflow/static analysis"
+      },
+      "observed": {
+        "checked": false
+      },
+      "evidence": [],
+      "review_note": "Workflow-level permissions, pinned action refs, untrusted input handling, zizmor, and Scorecard are outside v0.1.",
+      "limitations": []
+    },
+    {
+      "id": "repository_access_surface",
+      "title": "Repository access surface",
+      "status": "MANUAL",
+      "severity": "medium",
+      "confidence": "high",
+      "source": {
+        "type": "manual",
+        "name": "collaborators, teams, deploy keys, webhooks, variables, and broader secrets inventory"
+      },
+      "observed": {
+        "checked_by_default": false
+      },
+      "evidence": [],
+      "review_note": "Access review can expose sensitive operational metadata and is not collected by default v0.1.",
+      "limitations": []
     }
   ],
   "limitations": [
-    {
-      "source": "GET /repos/{owner}/{repo}/dependabot/alerts?state=open",
-      "detail": "Dependabot alert listing was unavailable in the sample observation."
-    },
-    {
-      "source": "GET /repos/{owner}/{repo}/code-scanning/alerts?state=open",
-      "detail": "Code scanning alert listing was unavailable because no analysis was found in the sample observation."
-    },
-    {
-      "source": "v0.1 scope",
-      "detail": "Workflow file diagnostics, zizmor, Scorecard, local clone inspection, and automatic remediation are out of scope."
-    }
+    "This is a sample output contract, not a current audit result.",
+    "Open alert counts depend on endpoint availability, feature state, token permissions, and pagination.",
+    "No workflow files, local repository contents, cloud provider trust policies, or remediation actions were inspected.",
+    "No secret values are collected or reported."
   ]
 }

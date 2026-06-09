@@ -3,10 +3,9 @@
 `gh-security-audit` is a read-only Agent Skill for auditing GitHub repository
 security settings with `gh api`.
 
-v0.1 is intentionally small: it gives Codex, Claude Code, and other
-Agent-Skills-compatible tools a reproducible remote API recipe for one
-`OWNER/REPO`, plus an inventory-first finding model and output contract. It does
-not modify repository settings.
+v0.1 gives Codex, Claude Code, and other Agent-Skills-compatible tools a
+reproducible remote API recipe for one `OWNER/REPO`, plus an inventory-first
+finding model and output contract. It does not modify repository settings.
 
 ## What It Checks
 
@@ -15,14 +14,30 @@ available through the GitHub REST API:
 
 - repository metadata and `security_and_analysis`
 - GitHub Actions repository permissions
+- selected Actions allowlist details when applicable
 - default `GITHUB_TOKEN` workflow permissions
-- repository rulesets
+- branch rulesets, active default-branch rules, and legacy branch protection
+- code security configuration attachment
+- Dependency Graph and automatic dependency submission state when exposed by
+  repository metadata or security configurations
 - CodeQL default setup
+- CODEOWNERS syntax errors
+- security policy presence from community profile
+- Dependabot version-update config presence
 - Dependabot security updates and vulnerability alerts
+- private vulnerability reporting
 - open Dependabot, secret scanning, and code scanning alert counts
+- deployment environments and Actions secrets metadata
+- OIDC subject claim customization
+- self-hosted runner inventory
+- immutable releases
+- release inventory
+- artifact attestations for a supplied subject digest
+- SBOM and dependency review as explicit manual checks
 
-Workflow file static analysis, zizmor, Scorecard, local clone inspection, and
-automatic remediation are out of scope for v0.1.
+Workflow file static analysis, cloud provider trust-policy inspection, zizmor,
+Scorecard, local clone inspection, and automatic remediation are out of scope
+for v0.1.
 
 ## Install
 
@@ -76,6 +91,9 @@ repository.
   differences are reported as limitations, not as `FAIL`.
 - Alert findings and settings findings are separate.
 - Secret scanning output must not include secret values or location details.
+- Actions secret inventory must not include secret values.
+- Ruleset inventory alone is not a default-branch protection verdict.
+- CodeQL default setup alone is not proof that all code scanning is absent.
 - Markdown and JSON should be generated from the same finding set.
 - Default v0.1 output reports observed state first. Review flags are assigned
   only from the deterministic table in `finding_model.md`.
