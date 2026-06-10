@@ -16,6 +16,9 @@
     "mode": "remote-api-inventory",
     "sources": [
       "https://docs.github.com/en/rest/repos/repos?apiVersion=2026-03-10",
+      "https://docs.github.com/en/rest/repos/contents?apiVersion=2026-03-10",
+      "https://docs.github.com/en/rest/actions/variables?apiVersion=2026-03-10",
+      "https://docs.github.com/en/rest/dependency-graph/sboms?apiVersion=2026-03-10",
       "https://docs.github.com/en/rest/branches/branches?apiVersion=2026-03-10",
       "https://docs.github.com/en/rest/branches/branch-protection?apiVersion=2026-03-10",
       "https://docs.github.com/en/rest/actions/permissions?apiVersion=2026-03-10",
@@ -54,18 +57,21 @@
         "visibility": "public",
         "private": false,
         "archived": false,
-        "default_branch": "main"
+        "default_branch": "main",
+        "allow_forking": true,
+        "web_commit_signoff_required": false,
+        "delete_branch_on_merge": false
       },
       "evidence": [
         "Repository metadata was retrieved."
       ],
-      "review_note": "Use this metadata as context for other findings.",
+      "review_note": "Use this metadata as context for other findings. Merge and forking settings are inventory only.",
       "limitations": []
     },
     {
       "id": "repository_security_and_analysis",
       "title": "Repository security and analysis settings",
-      "status": "PASS",
+      "status": "WARN",
       "severity": "info",
       "confidence": "medium",
       "source": {
@@ -76,12 +82,15 @@
         "advanced_security": null,
         "secret_scanning": "enabled",
         "secret_scanning_push_protection": "enabled",
-        "dependabot_security_updates": "enabled"
+        "dependabot_security_updates": "enabled",
+        "secret_scanning_validity_checks": "disabled",
+        "secret_scanning_non_provider_patterns": "disabled"
       },
       "evidence": [
-        "security_and_analysis fields were present in repository metadata."
+        "security_and_analysis fields were present in repository metadata.",
+        "Two returned statuses were explicitly disabled in the sample observation."
       ],
-      "review_note": "Omitted or null fields are recorded as unavailable, not failures.",
+      "review_note": "Omitted or null fields are recorded as unavailable, not failures. Explicitly disabled statuses are flagged for review.",
       "limitations": [
         "Field availability varies by repository visibility, plan, and token permissions."
       ]
@@ -89,23 +98,23 @@
     {
       "id": "dependency_graph",
       "title": "Dependency Graph",
-      "status": "PASS",
+      "status": "MANUAL",
       "severity": "medium",
-      "confidence": "medium",
+      "confidence": "low",
       "source": {
         "type": "github_api",
-        "name": "GET /repos/{owner}/{repo}"
+        "name": "GET /repos/{owner}/{repo}/dependency-graph/sbom (status probe)"
       },
       "observed": {
-        "dependency_graph": {
-          "status": "enabled"
-        }
+        "http_status": 404
       },
       "evidence": [
-        "Repository metadata or security configuration reported Dependency Graph enabled."
+        "The SBOM status probe returned 404 in the sample observation."
       ],
-      "review_note": "Dependency Graph state is separate from Dependabot alert and update settings.",
-      "limitations": []
+      "review_note": "A 200 would prove Dependency Graph is enabled. 404 cannot distinguish disabled, unsupported, or no-manifest states. The SBOM body is never interpreted.",
+      "limitations": [
+        "The probe status alone cannot determine why an SBOM was unavailable."
+      ]
     },
     {
       "id": "automatic_dependency_submission",
@@ -147,22 +156,24 @@
       "limitations": []
     },
     {
-      "id": "community_profile_security_policy",
-      "title": "Security policy presence",
+      "id": "security_policy_file",
+      "title": "Security policy file presence",
       "status": "WARN",
       "severity": "low",
-      "confidence": "medium",
+      "confidence": "high",
       "source": {
         "type": "github_api",
-        "name": "GET /repos/{owner}/{repo}/community/profile"
+        "name": "GET /repos/{owner}/{repo}/contents/SECURITY.md (root, .github/, docs/)"
       },
       "observed": {
-        "security_policy_present": false
+        "security_md_root": 404,
+        "security_md_github_dir": 404,
+        "security_md_docs_dir": 404
       },
       "evidence": [
-        "The sample community profile did not include a security policy file."
+        "All three SECURITY.md contents probes returned 404 on the default branch."
       ],
-      "review_note": "For public projects, consider documenting how to report vulnerabilities.",
+      "review_note": "For public projects, consider documenting how to report vulnerabilities. The community profile endpoint is community health context only.",
       "limitations": []
     },
     {
@@ -247,6 +258,45 @@
       "limitations": []
     },
     {
+      "id": "actions_fork_pr_approval_policy",
+      "title": "Fork pull request contributor approval policy",
+      "status": "PASS",
+      "severity": "medium",
+      "confidence": "high",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/actions/permissions/fork-pr-contributor-approval"
+      },
+      "observed": {
+        "approval_policy": "first_time_contributors"
+      },
+      "evidence": [
+        "The fork PR contributor approval policy was retrievable in the sample observation."
+      ],
+      "review_note": "The returned policy is inventory; review it against the repository's exposure to fork pull requests.",
+      "limitations": []
+    },
+    {
+      "id": "actions_fork_pr_private_repos",
+      "title": "Private repository fork PR workflow settings",
+      "status": "SKIP",
+      "severity": "info",
+      "confidence": "medium",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/actions/permissions/fork-pr-workflows-private-repos"
+      },
+      "observed": {
+        "http_status": 422,
+        "reason": "public repository"
+      },
+      "evidence": [
+        "The public sample repository returned 422; this status is empirical, not documented."
+      ],
+      "review_note": "Run this check for private repositories that receive fork pull requests.",
+      "limitations": []
+    },
+    {
       "id": "branch_rulesets_inventory",
       "title": "Branch rulesets inventory",
       "status": "PASS",
@@ -263,6 +313,44 @@
         "The sample observation returned zero branch-targeting rulesets."
       ],
       "review_note": "Ruleset count alone is not a default-branch protection verdict.",
+      "limitations": []
+    },
+    {
+      "id": "tag_rulesets_inventory",
+      "title": "Tag rulesets inventory",
+      "status": "PASS",
+      "severity": "info",
+      "confidence": "high",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/rulesets?includes_parents=true&targets=tag"
+      },
+      "observed": {
+        "ruleset_count": 0
+      },
+      "evidence": [
+        "The sample observation returned zero tag-targeting rulesets."
+      ],
+      "review_note": "Ruleset count alone is not a tag protection verdict.",
+      "limitations": []
+    },
+    {
+      "id": "push_rulesets_inventory",
+      "title": "Push rulesets inventory",
+      "status": "PASS",
+      "severity": "info",
+      "confidence": "high",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/rulesets?includes_parents=true&targets=push"
+      },
+      "observed": {
+        "ruleset_count": 0
+      },
+      "evidence": [
+        "The sample observation returned zero push rulesets."
+      ],
+      "review_note": "Ruleset count alone is not a push policy verdict.",
       "limitations": []
     },
     {
@@ -486,6 +574,48 @@
       "limitations": []
     },
     {
+      "id": "secret_scanning_validity_checks",
+      "title": "Secret scanning validity checks",
+      "status": "WARN",
+      "severity": "low",
+      "confidence": "medium",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}"
+      },
+      "observed": {
+        "secret_scanning_validity_checks": {
+          "status": "disabled"
+        }
+      },
+      "evidence": [
+        "Repository metadata returned the validity checks status explicitly as disabled."
+      ],
+      "review_note": "An explicitly disabled status is flagged for review; an absent field would be MANUAL.",
+      "limitations": []
+    },
+    {
+      "id": "secret_scanning_non_provider_patterns",
+      "title": "Secret scanning non-provider patterns",
+      "status": "WARN",
+      "severity": "low",
+      "confidence": "medium",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}"
+      },
+      "observed": {
+        "secret_scanning_non_provider_patterns": {
+          "status": "disabled"
+        }
+      },
+      "evidence": [
+        "Repository metadata returned the non-provider patterns status explicitly as disabled."
+      ],
+      "review_note": "An explicitly disabled status is flagged for review; an absent field would be MANUAL.",
+      "limitations": []
+    },
+    {
       "id": "deployment_environments",
       "title": "Deployment environments",
       "status": "MANUAL",
@@ -521,6 +651,25 @@
         "Repository Actions secrets metadata was retrievable."
       ],
       "review_note": "Only names and metadata are inventory; values are never available or reported.",
+      "limitations": []
+    },
+    {
+      "id": "actions_variables_inventory",
+      "title": "Repository Actions variables metadata",
+      "status": "PASS",
+      "severity": "info",
+      "confidence": "medium",
+      "source": {
+        "type": "github_api",
+        "name": "GET /repos/{owner}/{repo}/actions/variables"
+      },
+      "observed": {
+        "variable_count": 0
+      },
+      "evidence": [
+        "Value-redacted Actions variables metadata was retrievable; zero variables were listed."
+      ],
+      "review_note": "Values are removed at collection time and are never persisted or reported.",
       "limitations": []
     },
     {
@@ -778,7 +927,7 @@
       "confidence": "high",
       "source": {
         "type": "manual",
-        "name": "collaborators, teams, deploy keys, webhooks, variables, and broader secrets inventory"
+        "name": "collaborators, teams, deploy keys, and webhooks"
       },
       "observed": {
         "checked_by_default": false

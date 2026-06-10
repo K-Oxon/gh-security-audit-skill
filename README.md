@@ -12,22 +12,27 @@ finding model and output contract. It does not modify repository settings.
 The v0.1 remote-api audit focuses on GitHub repository settings and alert state
 available through the GitHub REST API:
 
-- repository metadata and `security_and_analysis`
+- repository metadata, `security_and_analysis`, and merge/forking settings
+  (`allow_forking`, `web_commit_signoff_required`, `delete_branch_on_merge`)
 - GitHub Actions repository permissions
 - selected Actions allowlist details when applicable
 - default `GITHUB_TOKEN` workflow permissions
-- branch rulesets, active default-branch rules, and legacy branch protection
+- fork pull request contributor approval policy
+- branch, tag, and push rulesets; active default-branch rules; and legacy
+  branch protection
 - code security configuration attachment
-- Dependency Graph and automatic dependency submission state when exposed by
-  repository metadata or security configurations
+- Dependency Graph enablement via an SBOM status probe, and automatic
+  dependency submission state when exposed
 - CodeQL default setup
 - CODEOWNERS syntax errors
-- security policy presence from community profile
+- security policy file presence via contents probes (`SECURITY.md` in the
+  repository root, `.github/`, and `docs/`)
 - Dependabot version-update config presence
 - Dependabot security updates and vulnerability alerts
 - private vulnerability reporting
 - open Dependabot, secret scanning, and code scanning alert counts
-- deployment environments and Actions secrets metadata
+- deployment environments, Actions secrets metadata, and value-redacted
+  Actions variables metadata
 - OIDC subject claim customization
 - self-hosted runner inventory
 - immutable releases
@@ -42,7 +47,10 @@ for v0.1.
 ## Install
 
 `gh skill` is the primary install path. It is currently a GitHub CLI preview
-feature.
+feature. See the [Agent Skills specification](https://agentskills.io/specification)
+and the GitHub CLI manuals for [`gh skill`](https://cli.github.com/manual/gh_skill),
+[`gh skill install`](https://cli.github.com/manual/gh_skill_install), and
+[`gh skill publish`](https://cli.github.com/manual/gh_skill_publish).
 
 Install for Codex at user scope:
 

@@ -15,8 +15,9 @@ Key points:
   protection were reported as separate evidence surfaces.
 - CodeQL default setup was not configured in the sample observation, but this is
   not proof that all code scanning is absent.
-- Dependency Graph, automatic dependency submission, Dependabot config, and SBOM
-  coverage are reported separately.
+- Dependency Graph enablement was probed via the SBOM status endpoint;
+  automatic dependency submission, Dependabot config, and SBOM content coverage
+  are reported separately.
 - Secret scanning and push protection were enabled in repository metadata.
 - Deployment, OIDC, self-hosted runner, immutable release, and attestation
   checks were inventoried or marked manual where v0.1 cannot prove coverage.
@@ -44,16 +45,18 @@ Secret scanning alert details and secret values are intentionally omitted.
 
 | ID | Status | Severity | Observed state |
 | --- | --- | --- | --- |
-| `repo_metadata` | `PASS` | `info` | Repository metadata was retrieved and the repository was not archived. |
-| `repository_security_and_analysis` | `PASS` | `info` | Security and analysis fields were present; some fields may be unavailable. |
-| `dependency_graph` | `PASS` | `medium` | Dependency Graph was reported enabled. |
+| `repo_metadata` | `PASS` | `info` | Repository metadata was retrieved and the repository was not archived. Merge and forking settings were recorded as inventory. |
+| `repository_security_and_analysis` | `WARN` | `info` | Security and analysis fields were present; two returned statuses were explicitly `disabled`. |
+| `dependency_graph` | `MANUAL` | `medium` | The SBOM status probe returned 404, which cannot distinguish disabled, unsupported, or no-manifest states. |
 | `automatic_dependency_submission` | `MANUAL` | `medium` | Automatic dependency submission was not set in the sample observation. |
 | `code_security_configuration` | `MANUAL` | `info` | No code security configuration was attached in the sample observation. |
-| `community_profile_security_policy` | `WARN` | `low` | No security policy file was present in the sample community profile. |
+| `security_policy_file` | `WARN` | `low` | All three SECURITY.md contents probes (root, `.github/`, `docs/`) returned 404. |
 | `actions_repository_permissions` | `WARN` | `medium` | Actions were enabled, all actions were allowed, and SHA pinning was not required. |
 | `actions_selected_actions` | `SKIP` | `info` | Selected Actions details were not applicable because `allowed_actions` was not `selected`. |
 | `actions_workflow_token_permissions` | `PASS` | `medium` | Default workflow token permission was `read`; workflow files were not inspected. |
 | `actions_access_private_repository` | `SKIP` | `info` | Private repository component access was not applicable for the public sample repository. |
+| `actions_fork_pr_approval_policy` | `PASS` | `medium` | The fork PR contributor approval policy was `first_time_contributors`; inventory only. |
+| `actions_fork_pr_private_repos` | `SKIP` | `info` | The public sample repository returned 422; this status is empirical, not documented. |
 | `codeql_default_setup` | `WARN` | `medium` | CodeQL default setup state was `not-configured`. |
 | `dependabot_version_updates_config` | `MANUAL` | `low` | No `.github/dependabot.yml` file was found in the sample observation. |
 | `dependabot_security_updates` | `PASS` | `medium` | Dependabot security updates were enabled in the sample observation. |
@@ -61,6 +64,8 @@ Secret scanning alert details and secret values are intentionally omitted.
 | `private_vulnerability_reporting` | `WARN` | `medium` | Private vulnerability reporting was not enabled in the sample observation. |
 | `secret_scanning` | `PASS` | `medium` | Secret scanning was enabled in repository metadata. |
 | `secret_scanning_push_protection` | `PASS` | `medium` | Secret scanning push protection was enabled in repository metadata. |
+| `secret_scanning_validity_checks` | `WARN` | `low` | The validity checks status was explicitly `disabled` in repository metadata. |
+| `secret_scanning_non_provider_patterns` | `WARN` | `low` | The non-provider patterns status was explicitly `disabled` in repository metadata. |
 | `codeowners_errors` | `MANUAL` | `low` | CODEOWNERS syntax errors were not returned; missing CODEOWNERS is not zero errors. |
 
 ## Branch Protection and Rules Inventory
@@ -68,6 +73,8 @@ Secret scanning alert details and secret values are intentionally omitted.
 | ID | Status | Severity | Observed state |
 | --- | --- | --- | --- |
 | `branch_rulesets_inventory` | `PASS` | `info` | Zero branch-targeting rulesets were returned. This is inventory only. |
+| `tag_rulesets_inventory` | `PASS` | `info` | Zero tag-targeting rulesets were returned. This is inventory only. |
+| `push_rulesets_inventory` | `PASS` | `info` | Zero push rulesets were returned. This is inventory only. |
 | `default_branch_active_rules` | `WARN` | `medium` | No active rules were returned for `main` in the sample observation. |
 | `default_branch_summary` | `PASS` | `info` | The branch summary reported `protected=false`. |
 | `default_branch_legacy_protection` | `MANUAL` | `medium` | Detailed legacy protection was not returned; no policy verdict is made from this alone. |
@@ -86,6 +93,7 @@ Secret scanning alert details and secret values are intentionally omitted.
 | --- | --- | --- | --- |
 | `deployment_environments` | `MANUAL` | `info` | No deployment environments were returned. |
 | `actions_secrets_inventory` | `PASS` | `info` | Repository Actions secrets metadata was retrievable; zero secrets were listed. |
+| `actions_variables_inventory` | `PASS` | `info` | Value-redacted Actions variables metadata was retrievable; zero variables were listed. |
 | `actions_organization_secrets_inventory` | `SKIP` | `info` | Organization Actions secrets were not applicable in the sample observation. |
 | `environment_secrets_inventory` | `SKIP` | `info` | No environment secrets were collected because no environments were returned. |
 | `oidc_subject_claim` | `MANUAL` | `medium` | GitHub-side OIDC subject customization was available, but cloud trust was not inspected. |
@@ -96,7 +104,7 @@ Secret scanning alert details and secret values are intentionally omitted.
 | `sbom_inventory` | `MANUAL` | `medium` | Dependency Graph SBOM export was not collected by default v0.1 scope. |
 | `dependency_review` | `MANUAL` | `medium` | No base/head comparison or workflow inspection was supplied. |
 | `workflow_file_security` | `SKIP` | `medium` | Workflow file diagnostics were outside v0.1 scope. |
-| `repository_access_surface` | `MANUAL` | `medium` | Collaborators, teams, deploy keys, webhooks, variables, and broader secrets inventory were not collected by default. |
+| `repository_access_surface` | `MANUAL` | `medium` | Collaborators, teams, deploy keys, and webhooks were not collected by default. |
 
 ## Manual or Unavailable Checks
 
