@@ -1,126 +1,107 @@
 # gh-security-audit-skill
 
-`gh-security-audit` is a read-only Agent Skill for auditing GitHub repository
-security settings with `gh api`.
+[日本語](./README-ja.md)
 
-v0.1 gives Codex, Claude Code, and other Agent-Skills-compatible tools a
-reproducible remote API recipe for one `OWNER/REPO`, plus an inventory-first
-finding model and output contract. It does not modify repository settings.
+A read-only Agent Skill that audits the security settings of a single
+GitHub repository through `gh api`.
 
-## What It Checks
+## What it does
 
-The v0.1 remote-api audit focuses on GitHub repository settings and alert state
-available through the GitHub REST API:
+Give it `OWNER/REPO`. The skill runs a fixed set of read-only REST API
+calls and produces a Markdown report and JSON findings from the same
+data: observed settings, alert counts, and what could not be verified.
 
-- repository metadata, `security_and_analysis`, and merge/forking settings
-  (`allow_forking`, `web_commit_signoff_required`, `delete_branch_on_merge`)
-- GitHub Actions repository permissions
-- selected Actions allowlist details when applicable
-- default `GITHUB_TOKEN` workflow permissions
-- fork pull request contributor approval policy
-- branch, tag, and push rulesets; active default-branch rules; and legacy
-  branch protection
-- code security configuration attachment
-- Dependency Graph enablement via an SBOM status probe, and automatic
-  dependency submission state when exposed
-- CodeQL default setup
-- CODEOWNERS syntax errors
-- security policy file presence via contents probes (`SECURITY.md` in the
-  repository root, `.github/`, and `docs/`)
-- Dependabot version-update config presence
-- Dependabot security updates and vulnerability alerts
-- private vulnerability reporting
-- open Dependabot, secret scanning, and code scanning alert counts
-- deployment environments, Actions secrets metadata, and value-redacted
-  Actions variables metadata
-- OIDC subject claim customization
-- self-hosted runner inventory
-- immutable releases
-- release inventory
-- artifact attestations for a supplied subject digest
-- SBOM and dependency review as explicit manual checks
+The output is an inventory of current state, not advice. Statuses
+(`PASS` / `WARN` / `MANUAL` / `SKIP`) come from a deterministic table
+inside the skill, and `PASS` only means nothing was flagged for review.
+Whether the state is acceptable, and what to change, is your call —
+read the report against your own requirements and whatever counts as
+best practice at the time. `FAIL` is never used unless you supply a
+policy profile that defines failure conditions.
 
-Workflow file static analysis, cloud provider trust-policy inspection, zizmor,
-Scorecard, local clone inspection, and automatic remediation are out of scope
-for v0.1.
+## What it checks
+
+- repository metadata, `security_and_analysis`, merge/forking settings
+- Actions: repository permissions, workflow token defaults, fork PR
+  approval policy, secrets and variables metadata (names only), OIDC
+  subject claim, self-hosted runners
+- branch protection: branch/tag/push rulesets, active default-branch
+  rules, legacy branch protection
+- code security configuration, CodeQL default setup
+- Dependabot: config file, security updates, vulnerability alerts,
+  open alert counts
+- secret scanning settings and open alert counts
+- SECURITY.md presence, CODEOWNERS errors, private vulnerability
+  reporting
+- environments, releases, immutable releases, artifact attestations
+  (a subject digest is required)
+
+Out of scope in v0.1: workflow file contents (zizmor, Scorecard),
+local clones, cloud provider trust policies, SBOM contents, and any
+remediation. The skill never changes repository settings.
+
+## Prerequisites
+
+- `gh` installed and authenticated, with read access to the target
+  repository. Admin or security scopes unlock a few more checks;
+  anything out of reach is recorded as a limitation, not a failure.
+- `jq`
+- A POSIX shell. On Windows, use WSL or Git Bash.
 
 ## Install
 
-`gh skill` is the primary install path. It is currently a GitHub CLI preview
-feature. See the [Agent Skills specification](https://agentskills.io/specification)
-and the GitHub CLI manuals for [`gh skill`](https://cli.github.com/manual/gh_skill),
-[`gh skill install`](https://cli.github.com/manual/gh_skill_install), and
-[`gh skill publish`](https://cli.github.com/manual/gh_skill_publish).
-
-Install for Codex at user scope:
-
-```sh
-gh skill install K-Oxon/gh-security-audit-skill gh-security-audit --agent codex --scope user
-```
-
-Install for Claude Code at user scope:
+`gh skill` is currently a GitHub CLI preview feature.
 
 ```sh
 gh skill install K-Oxon/gh-security-audit-skill gh-security-audit --agent claude-code --scope user
+gh skill install K-Oxon/gh-security-audit-skill gh-security-audit --agent codex --scope user
 ```
 
-Local checkout validation install:
+From a local checkout:
 
 ```sh
-gh skill install . gh-security-audit --from-local --agent codex --scope project
 gh skill install . gh-security-audit --from-local --agent claude-code --scope project
 ```
 
-Publishing validation:
+## Usage
 
-```sh
-gh skill publish --dry-run
-```
-
-## Use
-
-Ask your agent to use the `gh-security-audit` skill for a repository:
+Claude Code:
 
 ```text
-Use gh-security-audit for OWNER/REPO and produce Markdown plus JSON findings.
+> Audit the security settings of OWNER/REPO with gh-security-audit
 ```
 
-The skill will read `skills/gh-security-audit/references/command_recipe.md`,
-run read-only `gh api` commands, and produce output using the shared finding
-model in `skills/gh-security-audit/references/finding_model.md`.
+Codex:
 
-Raw API output should be written to a temporary directory, not committed to this
-repository.
+```sh
+codex "Use gh-security-audit to audit OWNER/REPO. Output Markdown and JSON findings."
+```
 
-## Constraints
+The agent reads `references/command_recipe.md`, runs the read-only
+`gh api` commands, writes raw output to a temporary directory, and
+assembles the report using `references/finding_model.md`. Sample output
+is in `skills/gh-security-audit/examples/`.
 
-- Requires an authenticated `gh` CLI and repository read access.
-- API access failures, permission gaps, feature-disabled responses, and plan
-  differences are reported as limitations, not as `FAIL`.
-- Alert findings and settings findings are separate.
-- Secret scanning output must not include secret values or location details.
-- Actions secret inventory must not include secret values.
-- Ruleset inventory alone is not a default-branch protection verdict.
-- CodeQL default setup alone is not proof that all code scanning is absent.
-- Markdown and JSON should be generated from the same finding set.
-- Default v0.1 output reports observed state first. Review flags are assigned
-  only from the deterministic table in `finding_model.md`.
+## Reading the report
 
-## Repository Layout
+- `PASS`: evidence was retrieved and nothing matched a review flag.
+  Not a safety verdict.
+- `WARN`: the observed state matched a deterministic review flag.
+  Check it against your own policy.
+- `MANUAL`: needs human judgment or evidence the API cannot provide.
+- `SKIP`: out of scope or not applicable.
 
-The canonical skill source is:
+API errors, missing permissions, and plan differences are reported as
+limitations. Secret values, alert locations, and Actions variable
+values never appear in the output.
+
+## Layout
 
 ```text
 skills/gh-security-audit/
 ├── SKILL.md
-├── references/
-│   ├── command_recipe.md
-│   ├── finding_model.md
-│   └── github_api_sources.md
-└── examples/
-    ├── sample_findings.json
-    └── sample_report.md
+├── references/   # command recipe, finding model, API sources
+└── examples/     # sample report and findings
 ```
 
-Agent-specific install targets such as `.agents/skills` and `.claude/skills`
-are generated destinations, not canonical source.
+License: Apache-2.0
