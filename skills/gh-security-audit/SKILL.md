@@ -46,6 +46,9 @@ Markdown must contain:
 JSON must include `schema_version`, `subject`, `policy_context`, `findings`,
 and `limitations`. Use `schema_version: "0.1"`.
 
+See `examples/sample_report.md` and `examples/sample_findings.json` for the
+expected shape of both formats.
+
 Default v0.1 output is inventory-first. Report observed values, counts, and API
 limitations before making any recommendation. If a status is included, assign it
 only from the deterministic rules in `references/finding_model.md`; do not infer

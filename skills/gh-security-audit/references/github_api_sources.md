@@ -20,6 +20,8 @@ X-GitHub-Api-Version: 2026-03-10
   <https://docs.github.com/en/rest/overview/api-versions>
 - Repositories REST API:
   <https://docs.github.com/en/rest/repos/repos?apiVersion=2026-03-10>
+- Repository contents REST API:
+  <https://docs.github.com/en/rest/repos/contents?apiVersion=2026-03-10>
 - Community metrics REST API:
   <https://docs.github.com/en/rest/metrics/community?apiVersion=2026-03-10>
 - Branches REST API:
@@ -64,14 +66,6 @@ X-GitHub-Api-Version: 2026-03-10
   <https://docs.github.com/en/actions/security-for-github-actions/security-hardening-your-deployments/about-security-hardening-with-openid-connect>
 - Artifact attestations guide:
   <https://docs.github.com/en/actions/security-for-github-actions/using-artifact-attestations/using-artifact-attestations-to-establish-provenance-for-builds>
-- Agent Skills specification:
-  <https://agentskills.io/specification>
-- GitHub CLI `gh skill` manual:
-  <https://cli.github.com/manual/gh_skill>
-- GitHub CLI `gh skill install` manual:
-  <https://cli.github.com/manual/gh_skill_install>
-- GitHub CLI `gh skill publish` manual:
-  <https://cli.github.com/manual/gh_skill_publish>
 
 ## v0.1 Source Policy
 

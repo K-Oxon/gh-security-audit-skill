@@ -78,6 +78,18 @@ gh api -H "X-GitHub-Api-Version: ${API_VERSION}" \
   > "${OUT_DIR}/community_profile.json"
 
 gh api -H "X-GitHub-Api-Version: ${API_VERSION}" --include \
+  "repos/${OWNER}/${REPO}/contents/SECURITY.md?ref=${BRANCH_ENCODED}" \
+  > "${OUT_DIR}/security_md_root.http" || true
+
+gh api -H "X-GitHub-Api-Version: ${API_VERSION}" --include \
+  "repos/${OWNER}/${REPO}/contents/.github/SECURITY.md?ref=${BRANCH_ENCODED}" \
+  > "${OUT_DIR}/security_md_github_dir.http" || true
+
+gh api -H "X-GitHub-Api-Version: ${API_VERSION}" --include \
+  "repos/${OWNER}/${REPO}/contents/docs/SECURITY.md?ref=${BRANCH_ENCODED}" \
+  > "${OUT_DIR}/security_md_docs_dir.http" || true
+
+gh api -H "X-GitHub-Api-Version: ${API_VERSION}" --include \
   "repos/${OWNER}/${REPO}/code-scanning/default-setup" \
   > "${OUT_DIR}/codeql_default_setup.http" || true
 
@@ -227,7 +239,14 @@ the status line:
   or access limitations.
 - `GET /repos/{owner}/{repo}/branches/{branch}/protection` returns `200` when
   legacy branch protection exists for that branch and can return `404` when it
-  does not exist or the token cannot view it.
+  does not exist or the token cannot view it. When `repo.json` reports
+  `permissions.admin=true`, a `404` is evidence that legacy protection is
+  absent, not an access gap.
+- `GET /repos/{owner}/{repo}/contents/SECURITY.md` and the `.github/` and
+  `docs/` path variants return `200` when a security policy file exists at that
+  path on the requested ref and `404` when it does not. These probes are the
+  security policy evidence; `GET /community/profile` provides community health
+  context only and its response contains no security policy field.
 - `GET /repos/{owner}/{repo}/code-security-configuration` can return `200`
   when a security configuration manages the repository, `204` when none is
   attached, or an access/availability error.
@@ -237,7 +256,8 @@ the status line:
 Only run a `jq` helper after the corresponding endpoint produced JSON.
 
 ```sh
-jq '{full_name, visibility, private, archived, default_branch, security_and_analysis}' \
+jq '{full_name, visibility, private, archived, default_branch, security_and_analysis,
+  admin_permission: .permissions.admin}' \
   "${OUT_DIR}/repo.json"
 
 jq '{enabled, allowed_actions, selected_actions_url, sha_pinning_required}' \

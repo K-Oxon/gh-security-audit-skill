@@ -101,8 +101,9 @@ judgments from general security intuition.
 | `automatic_dependency_submission` | security configuration or repository metadata when present | disabled, not set, absent, or unavailable | `MANUAL` unless the repository policy requires it |
 | `code_security_configuration` | `GET /code-security-configuration` | `200` with attached configuration details | `PASS` |
 | `code_security_configuration` | `GET /code-security-configuration` | `204` no attached configuration | `MANUAL` |
-| `community_profile_security_policy` | `GET /community/profile` | security policy file present | `PASS` |
-| `community_profile_security_policy` | `GET /community/profile` | security policy file absent | `WARN` for public repos; `MANUAL` for private/internal repos |
+| `security_policy_file` | `GET /contents/SECURITY.md` probes (root, `.github/`, `docs/`) | any probe returns `200` | `PASS` |
+| `security_policy_file` | `GET /contents/SECURITY.md` probes (root, `.github/`, `docs/`) | all probes return `404` | `WARN` for public repos; `MANUAL` for private/internal repos |
+| `security_policy_file` | `GET /contents/SECURITY.md` probes (root, `.github/`, `docs/`) | any probe returns another non-2xx | limitation |
 | `actions_repository_permissions` | `GET /actions/permissions` | Actions enabled with `allowed_actions=selected` or `local_only`, and `sha_pinning_required=true` | `PASS` |
 | `actions_repository_permissions` | `GET /actions/permissions` | `enabled=false`, `allowed_actions=all`, or `sha_pinning_required=false` | `WARN` |
 | `actions_selected_actions` | `GET /actions/permissions/selected-actions` | selected actions details returned | `PASS`; inventory only |
@@ -116,7 +117,9 @@ judgments from general security intuition.
 | `default_branch_active_rules` | `GET /rules/branches/{branch}` | zero active rules returned | `WARN`; review legacy branch protection |
 | `default_branch_summary` | `GET /branches/{branch}` | branch summary returned | `PASS`; inventory `protected` and protection summary only |
 | `default_branch_legacy_protection` | `GET /branches/{branch}/protection` | `200` with protection settings | `PASS`; inventory only |
-| `default_branch_legacy_protection` | `GET /branches/{branch}/protection` | `404` or unavailable | `MANUAL` unless active default-branch rules already provide sufficient evidence for the user's policy |
+| `default_branch_legacy_protection` | `GET /branches/{branch}/protection` | `404` and `repo.json` `permissions.admin=true` and zero active default-branch rules | `WARN`; legacy protection is confirmed absent by an admin token and no ruleset rules apply either |
+| `default_branch_legacy_protection` | `GET /branches/{branch}/protection` | `404` and `repo.json` `permissions.admin=true` and one or more active default-branch rules | `MANUAL`; legacy protection is confirmed absent, review rule sufficiency via `default_branch_active_rules` |
+| `default_branch_legacy_protection` | `GET /branches/{branch}/protection` | `404` without admin-token evidence, or otherwise unavailable | `MANUAL`; absence and lack of access cannot be distinguished |
 | `codeql_default_setup` | `GET /code-scanning/default-setup` | `state=configured` | `PASS` |
 | `codeql_default_setup` | `GET /code-scanning/default-setup` | `state` other than `configured` | `WARN`, with caveat that advanced setup or third-party SARIF may still exist |
 | `dependabot_version_updates_config` | `GET /contents/.github/dependabot.yml` | file found | `PASS`; inventory only |
@@ -132,10 +135,12 @@ judgments from general security intuition.
 | `secret_scanning` | `GET /repos` `security_and_analysis` | disabled | `WARN` |
 | `secret_scanning_push_protection` | `GET /repos` `security_and_analysis` | enabled | `PASS` |
 | `secret_scanning_push_protection` | `GET /repos` `security_and_analysis` | disabled | `WARN` |
-| `secret_scanning_validity_checks` | `GET /repos` or security configuration | enabled | `PASS` |
-| `secret_scanning_validity_checks` | `GET /repos` or security configuration | disabled or absent | `WARN` if supported; otherwise `MANUAL` |
-| `secret_scanning_non_provider_patterns` | `GET /repos` or security configuration | enabled | `PASS` |
-| `secret_scanning_non_provider_patterns` | `GET /repos` or security configuration | disabled or absent | `WARN` if supported; otherwise `MANUAL` |
+| `secret_scanning_validity_checks` | `GET /repos` `security_and_analysis` | status explicitly `enabled` | `PASS` |
+| `secret_scanning_validity_checks` | `GET /repos` `security_and_analysis` | status explicitly `disabled` | `WARN` |
+| `secret_scanning_validity_checks` | `GET /repos` `security_and_analysis` | field absent from response | `MANUAL` with limitation; do not guess plan or feature support |
+| `secret_scanning_non_provider_patterns` | `GET /repos` `security_and_analysis` | status explicitly `enabled` | `PASS` |
+| `secret_scanning_non_provider_patterns` | `GET /repos` `security_and_analysis` | status explicitly `disabled` | `WARN` |
+| `secret_scanning_non_provider_patterns` | `GET /repos` `security_and_analysis` | field absent from response | `MANUAL` with limitation; do not guess plan or feature support |
 | `codeowners_errors` | `GET /codeowners/errors` | zero errors | `PASS` |
 | `codeowners_errors` | `GET /codeowners/errors` | one or more errors | `WARN` |
 | `codeowners_errors` | `GET /codeowners/errors` | `404`, missing CODEOWNERS, unavailable, or inaccessible | `MANUAL` |
@@ -174,7 +179,8 @@ judgments from general security intuition.
 | --- | --- | --- |
 | `GET /repos/{owner}/{repo}` | Build `subject`; use `security_and_analysis` when present. | `404` is repo missing or no access. Treat audit as blocked. |
 | `GET /code-security-configuration` | Create security configuration finding when attached. | `204`, `403`, or `404` becomes unattached/unavailable context, not a failure. |
-| `GET /community/profile` | Record whether a security policy file is present. | Community profile health is contextual and not a security verdict. |
+| `GET /community/profile` | Record community health context only. | The response at API version 2026-03-10 contains no security policy field; never use it as security policy evidence. |
+| `GET /contents/SECURITY.md` (root, `.github/`, `docs/`) | Record which probe paths returned `200` for the requested ref. | `404` means absent at that path; other non-2xx is an access or availability limitation. Do not output file contents unless the user asks. |
 | `GET /actions/permissions` | Create Actions repository permissions finding. | `403`/`404` becomes an Actions permissions limitation. |
 | `GET /actions/permissions/selected-actions` | Create selected actions inventory when applicable. | Skip if repository policy is not `selected`; limitation if access denied. |
 | `GET /actions/permissions/workflow` | Create workflow token permissions finding. | `403`/`404` becomes a workflow permissions limitation. |
@@ -182,7 +188,7 @@ judgments from general security intuition.
 | `GET /rulesets?includes_parents=true&targets=branch` | Inventory branch-targeting repository and parent rulesets. | Never treat count alone as default-branch protection. |
 | `GET /rules/branches/{branch}` | Inventory active rules that apply to the default branch, including inherited rules. | Empty result means no active rulesets applied; still check legacy branch protection. |
 | `GET /branches/{branch}` | Inventory the branch summary, including `protected` when returned. | Summary is not enough to understand detailed branch protection requirements. |
-| `GET /branches/{branch}/protection` | Inventory legacy branch protection. | `404` can mean no legacy protection or no access; record carefully. |
+| `GET /branches/{branch}/protection` | Inventory legacy branch protection. | `404` can mean no legacy protection or no access; when `repo.json` reports `permissions.admin=true`, treat `404` as confirmed absence. |
 | `GET /code-scanning/default-setup` | Create CodeQL default setup finding. | `403`/`404` may mean no Advanced Security, unsupported repo, no access, or no analysis; record limitation. |
 | `GET /contents/.github/dependabot.yml?ref={branch}` | Record whether Dependabot version-update configuration exists. | Do not output full config unless the user asks; absence is not a security-update verdict. |
 | `GET /automated-security-fixes` | Create Dependabot security updates finding. | `403`/`404` becomes limitation. |
