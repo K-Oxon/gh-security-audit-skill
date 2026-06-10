@@ -94,9 +94,10 @@ judgments from general security intuition.
 | --- | --- | --- | --- |
 | `repo_metadata` | `GET /repos/{owner}/{repo}` | `archived=false` and `default_branch` present | `PASS` |
 | `repo_metadata` | `GET /repos/{owner}/{repo}` | `archived=true` or missing `default_branch` | `WARN` |
+| `repo_metadata` | `GET /repos/{owner}/{repo}` | record `allow_forking`, `web_commit_signoff_required`, and `delete_branch_on_merge` in `observed` | inventory only; no status impact |
 | `repository_security_and_analysis` | `GET /repos/{owner}/{repo}` | Record `security_and_analysis` fields returned by GitHub | `PASS` unless a returned status is explicitly `disabled`, then `WARN` |
-| `dependency_graph` | `GET /repos/{owner}/{repo}` or security configuration | enabled | `PASS` |
-| `dependency_graph` | `GET /repos/{owner}/{repo}` or security configuration | disabled, absent, or unavailable | `WARN` if supported; otherwise limitation |
+| `dependency_graph` | `GET /dependency-graph/sbom` status probe | `200` | `PASS`; Dependency Graph can produce an SBOM, so the feature is enabled. Do not interpret the SBOM body |
+| `dependency_graph` | `GET /dependency-graph/sbom` status probe | `404` or other non-2xx | `MANUAL` with limitation; the status cannot distinguish disabled, unsupported, or no-manifest states |
 | `automatic_dependency_submission` | security configuration or repository metadata when present | enabled | `PASS` |
 | `automatic_dependency_submission` | security configuration or repository metadata when present | disabled, not set, absent, or unavailable | `MANUAL` unless the repository policy requires it |
 | `code_security_configuration` | `GET /code-security-configuration` | `200` with attached configuration details | `PASS` |
@@ -112,7 +113,13 @@ judgments from general security intuition.
 | `actions_workflow_token_permissions` | `GET /actions/permissions/workflow` | `default_workflow_permissions=write` or PR approval allowed | `WARN` |
 | `actions_access_private_repository` | `GET /actions/permissions/access` | private repository access level returned | `PASS`; inventory only |
 | `actions_access_private_repository` | `GET /actions/permissions/access` | public repository or endpoint not applicable | `SKIP` |
+| `actions_fork_pr_approval_policy` | `GET /actions/permissions/fork-pr-contributor-approval` | `200` with `approval_policy` | `PASS`; inventory the returned policy only |
+| `actions_fork_pr_approval_policy` | `GET /actions/permissions/fork-pr-contributor-approval` | non-2xx | limitation |
+| `actions_fork_pr_private_repos` | `GET /actions/permissions/fork-pr-workflows-private-repos` | `200` with settings | `PASS`; inventory only |
+| `actions_fork_pr_private_repos` | `GET /actions/permissions/fork-pr-workflows-private-repos` | non-2xx (public repos observed to return `422`) | `SKIP` or limitation |
 | `branch_rulesets_inventory` | `GET /rulesets?includes_parents=true&targets=branch` | any count | `PASS`; inventory only, never a protection verdict by count |
+| `tag_rulesets_inventory` | `GET /rulesets?includes_parents=true&targets=tag` | any count | `PASS`; inventory only, never a protection verdict by count |
+| `push_rulesets_inventory` | `GET /rulesets?includes_parents=true&targets=push` | any count | `PASS`; inventory only, never a protection verdict by count |
 | `default_branch_active_rules` | `GET /rules/branches/{branch}` | one or more active rules returned for default branch | `PASS`; describe rule types and sources |
 | `default_branch_active_rules` | `GET /rules/branches/{branch}` | zero active rules returned | `WARN`; review legacy branch protection |
 | `default_branch_summary` | `GET /branches/{branch}` | branch summary returned | `PASS`; inventory `protected` and protection summary only |
@@ -152,6 +159,8 @@ judgments from general security intuition.
 | `actions_secrets_inventory` | `GET /actions/secrets` | repository secrets metadata returned | `PASS`; inventory names/counts/updated timestamps only, never values |
 | `actions_secrets_inventory` | `GET /actions/secrets` | unavailable or access denied | limitation; not `FAIL` |
 | `actions_organization_secrets_inventory` | `GET /actions/organization-secrets` | organization secrets visible to repository returned | `PASS`; inventory names/counts/updated timestamps only, never values |
+| `actions_variables_inventory` | `GET /actions/variables` with value-redacting collection | redacted variable names/counts/timestamps returned | `PASS`; inventory names/counts/timestamps only, never values |
+| `actions_variables_inventory` | `GET /actions/variables` with value-redacting collection | unavailable or access denied | limitation; not `FAIL` |
 | `environment_secrets_inventory` | `GET /environments/{environment}/secrets` | environment secrets metadata returned | `PASS`; inventory names/counts/updated timestamps only, never values |
 | `oidc_subject_claim` | `GET /actions/oidc/customization/sub` | template returned | `PASS`; inventory only |
 | `oidc_subject_claim` | manual cloud/provider trust policy | GitHub-side template alone cannot prove cloud trust constraints | `MANUAL` |
@@ -170,7 +179,7 @@ judgments from general security intuition.
 | `sbom_inventory` | GitHub Dependency Graph SBOM APIs | SBOM export not collected by default v0.1 scope | `MANUAL` |
 | `dependency_review` | dependency review API or workflow/action inspection | no base/head comparison or workflow inspection supplied | `MANUAL` |
 | `workflow_file_security` | local clone or Contents API inspection | workflow-level permissions, pinned action refs, untrusted input handling, zizmor, or Scorecard not inspected | `SKIP` |
-| `repository_access_surface` | collaborators, teams, deploy keys, webhooks, secrets, variables | not collected by default v0.1 because it can expose sensitive operational metadata | `MANUAL` |
+| `repository_access_surface` | collaborators, teams, deploy keys, webhooks | not collected by default v0.1 because it can expose sensitive operational metadata | `MANUAL` |
 | any endpoint | any source | unavailable due to permissions, disabled feature, plan, unsupported repo, or no analysis | top-level or finding-level limitation; not `FAIL` |
 
 ## Endpoint Limitations
@@ -185,7 +194,11 @@ judgments from general security intuition.
 | `GET /actions/permissions/selected-actions` | Create selected actions inventory when applicable. | Skip if repository policy is not `selected`; limitation if access denied. |
 | `GET /actions/permissions/workflow` | Create workflow token permissions finding. | `403`/`404` becomes a workflow permissions limitation. |
 | `GET /actions/permissions/access` | Inventory private-repo component sharing access. | Public repos or unavailable endpoint should be `SKIP` or limitation. |
+| `GET /actions/permissions/fork-pr-contributor-approval` | Inventory the fork PR `approval_policy`. | Non-2xx is a limitation; the policy value is inventory, not a verdict. |
+| `GET /actions/permissions/fork-pr-workflows-private-repos` | Inventory private-repo fork PR workflow settings. | Public repos were observed to return `422`; that status is empirical, not documented. Classify non-2xx as `SKIP` or limitation. |
 | `GET /rulesets?includes_parents=true&targets=branch` | Inventory branch-targeting repository and parent rulesets. | Never treat count alone as default-branch protection. |
+| `GET /rulesets?includes_parents=true&targets=tag` | Inventory tag-targeting rulesets. | Never treat count alone as tag protection; rule details matter. |
+| `GET /rulesets?includes_parents=true&targets=push` | Inventory push rulesets. | Never treat count alone as a push policy verdict. |
 | `GET /rules/branches/{branch}` | Inventory active rules that apply to the default branch, including inherited rules. | Empty result means no active rulesets applied; still check legacy branch protection. |
 | `GET /branches/{branch}` | Inventory the branch summary, including `protected` when returned. | Summary is not enough to understand detailed branch protection requirements. |
 | `GET /branches/{branch}/protection` | Inventory legacy branch protection. | `404` can mean no legacy protection or no access; when `repo.json` reports `permissions.admin=true`, treat `404` as confirmed absence. |
@@ -202,6 +215,8 @@ judgments from general security intuition.
 | `GET /environments` | Inventory names, protection rule types, and deployment branch policy. | Do not output secret names or values; missing environments may be normal. |
 | `GET /actions/secrets` | Inventory repository secret names and metadata only. | Secret presence/absence is not a policy verdict; never output values. |
 | `GET /actions/organization-secrets` | Inventory organization secret names visible to the repository and metadata only. | Availability depends on owner type and permissions; never output values. |
+| `GET /actions/variables` | Inventory variable names and timestamps from the value-redacting collection only. | The raw response contains values; redact at collection time and never persist or output values. |
+| `GET /dependency-graph/sbom` (status probe) | `200` is evidence Dependency Graph is enabled. | Do not interpret the SBOM body; non-2xx cannot distinguish disabled, unsupported, or no-manifest states. |
 | `GET /environments/{environment}/secrets` | Inventory environment secret names and metadata only. | Environment secret inventory is per environment; never output values. |
 | `GET /actions/oidc/customization/sub` | Inventory GitHub-side subject claim template. | Cloud provider trust policy is not visible via GitHub API. |
 | `GET /actions/runners` | Inventory self-hosted runner count, status, OS, labels, and ephemeral flag. | Runner security posture requires human review. |
@@ -235,5 +250,9 @@ judgments from general security intuition.
   have provenance.
 - Do not include secret scanning secret values, raw secret fragments, file paths,
   line numbers, or location details in v0.1 output.
+- Do not persist or output Actions variable values; only the value-redacted
+  collection belongs on disk.
+- The SBOM probe is enablement evidence only. Do not interpret SBOM content;
+  `sbom_inventory` remains a separate `MANUAL` check.
 - Do not describe `PASS` as "safe" or "secure"; it only means the observed state
   did not match a deterministic review flag in this inventory model.

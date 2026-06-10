@@ -32,6 +32,8 @@ X-GitHub-Api-Version: 2026-03-10
   <https://docs.github.com/en/rest/actions/permissions?apiVersion=2026-03-10>
 - GitHub Actions secrets REST API:
   <https://docs.github.com/en/rest/actions/secrets?apiVersion=2026-03-10>
+- GitHub Actions variables REST API:
+  <https://docs.github.com/en/rest/actions/variables?apiVersion=2026-03-10>
 - GitHub Actions OIDC REST API:
   <https://docs.github.com/en/rest/actions/oidc?apiVersion=2026-03-10>
 - GitHub Actions self-hosted runners REST API:

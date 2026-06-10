@@ -53,9 +53,25 @@ gh api -H "X-GitHub-Api-Version: ${API_VERSION}" --include \
   "repos/${OWNER}/${REPO}/actions/permissions/access" \
   > "${OUT_DIR}/actions_access.http" || true
 
+gh api -H "X-GitHub-Api-Version: ${API_VERSION}" --include \
+  "repos/${OWNER}/${REPO}/actions/permissions/fork-pr-contributor-approval" \
+  > "${OUT_DIR}/actions_fork_pr_approval.http" || true
+
+gh api -H "X-GitHub-Api-Version: ${API_VERSION}" --include \
+  "repos/${OWNER}/${REPO}/actions/permissions/fork-pr-workflows-private-repos" \
+  > "${OUT_DIR}/actions_fork_pr_private_repos.http" || true
+
 gh api -H "X-GitHub-Api-Version: ${API_VERSION}" --paginate --slurp \
   "repos/${OWNER}/${REPO}/rulesets?includes_parents=true&targets=branch&per_page=100" \
   > "${OUT_DIR}/branch_rulesets_pages.json"
+
+gh api -H "X-GitHub-Api-Version: ${API_VERSION}" --paginate --slurp \
+  "repos/${OWNER}/${REPO}/rulesets?includes_parents=true&targets=tag&per_page=100" \
+  > "${OUT_DIR}/tag_rulesets_pages.json"
+
+gh api -H "X-GitHub-Api-Version: ${API_VERSION}" --paginate --slurp \
+  "repos/${OWNER}/${REPO}/rulesets?includes_parents=true&targets=push&per_page=100" \
+  > "${OUT_DIR}/push_rulesets_pages.json"
 
 gh api -H "X-GitHub-Api-Version: ${API_VERSION}" --paginate --slurp \
   "repos/${OWNER}/${REPO}/rules/branches/${BRANCH_ENCODED}?per_page=100" \
@@ -164,6 +180,14 @@ gh api -H "X-GitHub-Api-Version: ${API_VERSION}" --paginate --slurp \
   "repos/${OWNER}/${REPO}/actions/organization-secrets?per_page=100" \
   > "${OUT_DIR}/actions_organization_secrets_pages.json"
 
+gh api -H "X-GitHub-Api-Version: ${API_VERSION}" --paginate --slurp \
+  "repos/${OWNER}/${REPO}/actions/variables?per_page=100" |
+  jq '[.[] | {total_count, variables: [.variables[]? | {name, created_at, updated_at}]}]' \
+  > "${OUT_DIR}/actions_variables_redacted_pages.json"
+
+# The variables endpoint returns variable values. The jq filter above removes
+# values before anything reaches disk. Never persist or output variable values.
+
 jq -r '.[].environments[]?.name | @uri' "${OUT_DIR}/environments_pages.json" |
   while IFS= read -r ENVIRONMENT_ENCODED; do
     gh api -H "X-GitHub-Api-Version: ${API_VERSION}" --paginate --slurp \
@@ -174,6 +198,10 @@ jq -r '.[].environments[]?.name | @uri' "${OUT_DIR}/environments_pages.json" |
 gh api -H "X-GitHub-Api-Version: ${API_VERSION}" --include \
   "repos/${OWNER}/${REPO}/actions/oidc/customization/sub" \
   > "${OUT_DIR}/oidc_subject_claim.http" || true
+
+gh api -H "X-GitHub-Api-Version: ${API_VERSION}" --include \
+  "repos/${OWNER}/${REPO}/dependency-graph/sbom" \
+  > "${OUT_DIR}/dependency_graph_sbom_probe.http" || true
 
 if ! gh api -H "X-GitHub-Api-Version: ${API_VERSION}" --paginate --slurp \
   "repos/${OWNER}/${REPO}/actions/runners?per_page=100" \
@@ -194,10 +222,11 @@ gh api -H "X-GitHub-Api-Version: ${API_VERSION}" --paginate --slurp \
   > "${OUT_DIR}/artifact_attestations_pages.json"
 ```
 
-SBOM export is intentionally not part of the default v0.1 recipe scope. GitHub
-provides read-only Dependency Graph SBOM APIs, but v0.1 does not collect or
-interpret SBOM content by default. Record SBOM coverage as `MANUAL` unless the
-user explicitly asks for SBOM inventory.
+SBOM content inventory is intentionally not part of the default v0.1 recipe
+scope. The `dependency-graph/sbom` probe above is HTTP-status evidence for the
+`dependency_graph` finding only: use the status line, do not interpret the SBOM
+body. Record SBOM coverage as `MANUAL` unless the user explicitly asks for SBOM
+inventory.
 
 ## Optional Organization Context
 
@@ -250,6 +279,16 @@ the status line:
 - `GET /repos/{owner}/{repo}/code-security-configuration` can return `200`
   when a security configuration manages the repository, `204` when none is
   attached, or an access/availability error.
+- `GET /repos/{owner}/{repo}/actions/permissions/fork-pr-contributor-approval`
+  returns `200` with an `approval_policy` value when available.
+- `GET /repos/{owner}/{repo}/actions/permissions/fork-pr-workflows-private-repos`
+  applies to private repository settings. A public repository was observed to
+  return `422`; that status is empirical, not documented, so classify any
+  non-2xx as `SKIP` or limitation.
+- `GET /repos/{owner}/{repo}/dependency-graph/sbom` returns `200` when
+  Dependency Graph can produce an SBOM, which is evidence the feature is
+  enabled. `404` is documented only as not found and cannot distinguish
+  disabled, unsupported, or no-manifest states; record it as a limitation.
 
 ## Optional Inspection Helpers
 
@@ -257,7 +296,8 @@ Only run a `jq` helper after the corresponding endpoint produced JSON.
 
 ```sh
 jq '{full_name, visibility, private, archived, default_branch, security_and_analysis,
-  admin_permission: .permissions.admin}' \
+  admin_permission: .permissions.admin,
+  allow_forking, web_commit_signoff_required, delete_branch_on_merge}' \
   "${OUT_DIR}/repo.json"
 
 jq '{enabled, allowed_actions, selected_actions_url, sha_pinning_required}' \
@@ -267,6 +307,8 @@ jq '{default_workflow_permissions, can_approve_pull_request_reviews}' \
   "${OUT_DIR}/actions_workflow_permissions.json"
 
 jq '[.[][]] | length' "${OUT_DIR}/branch_rulesets_pages.json"
+jq '[.[][]] | length' "${OUT_DIR}/tag_rulesets_pages.json"
+jq '[.[][]] | length' "${OUT_DIR}/push_rulesets_pages.json"
 jq '[.[][]] | length' "${OUT_DIR}/default_branch_active_rules_pages.json"
 jq '{name, protected, protection}' "${OUT_DIR}/default_branch.json"
 jq '{health_percentage, files}' "${OUT_DIR}/community_profile.json"
@@ -274,6 +316,7 @@ jq '[.[][]] | length' "${OUT_DIR}/secret_scanning_alerts_open_pages.json"
 jq '[.[].environments[]?] | length' "${OUT_DIR}/environments_pages.json"
 jq '[.[].secrets[]?] | length' "${OUT_DIR}/actions_secrets_pages.json"
 jq '[.[].secrets[]?] | length' "${OUT_DIR}/actions_organization_secrets_pages.json"
+jq '[.[].variables[]?] | length' "${OUT_DIR}/actions_variables_redacted_pages.json"
 jq '[.[].runners[]?] | length' "${OUT_DIR}/self_hosted_runners_pages.json"
 jq '[.[][]] | length' "${OUT_DIR}/releases_pages.json"
 ```
